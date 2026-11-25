@@ -362,6 +362,14 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
             <div id="qout" style="margin-top:14px"></div>
             <div class="quick"><button class="btn am" id="qdraft">Have Jarvis draft a proposal</button></div>
           </div>
+          <div class="panel" style="grid-column:1/-1" id="dealpanel"><h2>Deal builder</h2>
+            <p class="note">Brain dump everything from the conversation: who, fleet, vehicles, where they park, hours, water and power on site, what they care about, budget hints, objections, timing. Jarvis builds the deal around them and around you.</p>
+            <div class="form" style="grid-template-columns:minmax(0,1fr) auto"><label class="f">Company (optional)<input class="inp" id="dealco" placeholder="e.g. Kenway Distributors"></label>
+              <button type="button" class="mic" id="dealmic" aria-label="Dictate deal notes" title="Dictate into the notes"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button></div>
+            <textarea class="inp" id="dealnotes" rows="7" style="margin-top:10px;resize:vertical;font-size:16px;line-height:1.45" placeholder="e.g. Talked to Tony at Kenway. 5 box trucks, 16 ft Isuzu, plus a Sprinter. Park at the Strawberry Ln yard, trucks back by 4 PM, gone by 6 AM. Hose bib on the side of the building, no power out back. Wants them shiny for a customer visit monthly. Owner is price sensitive, used a guy at $50 before who stopped showing up..."></textarea>
+            <div class="quick"><button class="btn am" id="dealbuild">Build the deal</button><button class="btn" id="dealsave" disabled>Save to Notion</button><button class="btn" id="dealprop" disabled>Draft the proposal</button><button class="btn" id="dealcowork" disabled>Hand to Cowork</button><button class="btn" id="dealclear">Clear</button></div>
+            <div id="dealout" class="msg" style="border-left:2px solid var(--am);padding-left:12px;margin-top:6px;min-height:20px"></div>
+          </div>
           <div class="panel scroll"><h2>Weekly numbers</h2>
             <table class="tbl"><thead><tr><th>Week ending</th><th class="n">Recurring</th><th class="n">Cash</th><th class="n">Wins</th></tr></thead><tbody id="weeks"></tbody></table></div>
           <div class="panel"><h2>Urable</h2><p class="note">Recent jobs and payments from Urable, through your Zapier connection.</p>
@@ -1333,6 +1341,59 @@ function knowledge() {
   return `OMNI HQ (Jarvis charter):\n${K.hq}\n\nSHARED MEMORY (Cowork's memory plus what Jarvis learned):\n${K.memory}\n\nOUTREACH PLAYBOOK (key rules Cowork follows):\n${K.playbook}`;
 }
 
+/* ---------- deal builder ---------- */
+const DEAL_PAGE = '42342d38-36ae-818a-bde0-d7ac45d5306d';
+const DEAL_RULES = `You are Jarvis building a fleet care deal for Ryan at OMNI Vehicle Management from his raw notes of a conversation with a prospect. Build it around THIS client and around what works for OMNI. Be specific, practical and decisive.
+
+What OMNI is: Ryan is a solo operator (planning to add day rate techs and a commission salesman). Fleet washing and interior care on site, 24/7 including nights and weekends so vehicles never leave the road. Typical speed: about 10 minutes per semi tractor exterior, 10 to 15 minutes per van interior; estimate time per vehicle type from the notes. Equipment: electric and gas pressure washers, generator, 33 gallon tank, 8 ft trailer, Bridgepoint chemicals. OMNI uses the client's water hookup and cannot carry enough water for a fleet (never promise to bring water). No spot free (DI) rinse system yet: say so if a spot free finish matters. Services: exterior wash, interior resets, spray wax, ceramic coating and fleet wraps (high roof $699, box truck $999, 10% off 5+), tint, paint correction.
+
+Pricing framework (always run price_quote for the options, never guess the math): target $190 per labor hour, $150 floor. Frequency: weekly x0.7, bi weekly x0.8, monthly x0.9, every 2 months x1.0, quarterly x1.1. Fleet size: 1 to 4 vehicles +15%, 16+ vehicles -5%. Surcharges: weekend +15%, holiday +25%, same day +50%. Travel +$25 within 15 miles, +$35 beyond. Ryan's past fleet rates were too low (for example $50 per tractor); quote at or above the framework unless there is a clear strategic reason, and say the reason.
+
+Terms Ryan offers: no long contract to start, pay only for vehicles serviced, 24 hour redo guarantee, 20% off personal vehicles for anyone who works at the partner company, intro visit on 3 or 4 vehicles. Never: free service credits, book now pay later.
+
+Write plain text with these headings in caps, short lines:
+DEAL SNAPSHOT (who, fleet, what they care about, decision maker)
+SERVICE PLAN (scope per visit, frequency, day and time window)
+LOGISTICS (location and access, water and power, where to stage, time per visit and per vehicle, route pairing with nearby accounts, anything that could break the plan)
+PRICING OPTIONS (2 or 3 options from price_quote: per vehicle per wash, per visit, monthly; mark the one to lead with and why it works for them and for OMNI; effective hourly rate)
+TERMS (what to offer to remove risk for them without giving work away)
+RISKS AND QUESTIONS (what Ryan must confirm before the proposal)
+NEXT STEP (one specific ask with a date or time)
+Use only facts from the notes, the lead record and the knowledge below. Mark assumptions as ASSUMED. Under 380 words.`;
+let dealText = '';
+async function buildDeal() {
+  const notes = $('dealnotes').value.trim(), co = $('dealco').value.trim(), out = $('dealout');
+  if (!notes) { out.textContent = 'Add your notes first.'; return; }
+  if (!sample) { out.textContent = 'The deal builder needs Claude. Open Jarvis in the Claude app.'; return; }
+  store.set('jarvis.dealNotes', notes); store.set('jarvis.dealCo', co);
+  ['dealsave', 'dealprop', 'dealcowork'].forEach((id) => { $(id).disabled = true; });
+  out.textContent = 'Building the deal…'; $('dealbuild').disabled = true; setState('think', 'BUILDING DEAL');
+  const lim = await sample.limits().catch(() => null);
+  const tools = TOOLS.filter((t) => ['price_quote', 'lookup_lead', 'read_notion', 'search_gmail', 'read_email_thread'].includes(t.name));
+  const prompt = DEAL_RULES + '\n\n' + knowledge().slice(0, 16000) + '\n\nCOMPANY: ' + (co || '(not given)') + '\n\nRYAN\'S NOTES FROM THE CONVERSATION:\n' + notes + (co ? '\n\nLook up the company with lookup_lead first for history and contacts.' : '');
+  try {
+    const r = await sample(prompt, { cache: false, modelTier: lim?.modelTiers?.includes('inherit') ? 'inherit' : 'default', tools: lim?.tools ? tools : undefined, onText: ({ text }) => { out.textContent = text; } });
+    dealText = r.text; out.textContent = r.text; ['dealsave', 'dealprop', 'dealcowork'].forEach((id) => { $(id).disabled = false; });
+  } catch (e) { out.textContent = (e && e.text) || 'Could not build it (' + ((e && e.code) || 'error') + (e && e.message ? ': ' + String(e.message).slice(0, 160) : '') + '). Try again.'; }
+  $('dealbuild').disabled = false; setState(null);
+}
+$('dealnotes').value = store.get('jarvis.dealNotes', ''); $('dealco').value = store.get('jarvis.dealCo', '');
+$('dealnotes').addEventListener('input', () => store.set('jarvis.dealNotes', $('dealnotes').value));
+$('dealco').addEventListener('input', () => store.set('jarvis.dealCo', $('dealco').value));
+$('dealbuild').onclick = buildDeal;
+$('dealclear').onclick = () => { $('dealnotes').value = ''; $('dealco').value = ''; $('dealout').textContent = ''; dealText = ''; store.set('jarvis.dealNotes', ''); store.set('jarvis.dealCo', ''); ['dealsave', 'dealprop', 'dealcowork'].forEach((id) => { $(id).disabled = true; }); };
+$('dealsave').onclick = async () => {
+  if (!mcp || !dealText) return; const co = $('dealco').value.trim() || 'Untitled deal';
+  try {
+    const res = await call('Notion', 'notion-create-pages', { parent: { page_id: DEAL_PAGE }, pages: [{ properties: { title: `${co} · ${isoDay()}` }, content: `## Plan\n\n${dealText.replace(/^([A-Z][A-Z &]+)$/gm, '### $1')}\n\n## Ryan's notes\n\n${$('dealnotes').value.trim()}` }] });
+    const url = res?.pages?.[0]?.url;
+    resultCard('Deal plan saved', [co, url ? 'In Notion under OMNI HQ, Deal Plans.' : 'Notion did not confirm the page; check Deal Plans.'], !!url);
+    if (url) await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: [{ properties: { Entry: `Deal plan built: ${co}`.slice(0, 200), 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: 'Next step', Status: 'Needs Ryan', Company: co, Detail: 'Plan saved in Deal Plans. Next step: ' + ((dealText.split('NEXT STEP')[1] || '').trim().slice(0, 600)) } }] }).then(refreshNotion).catch(() => {});
+  } catch (e) { resultCard('Not saved', [errCopy(e, 'Notion')], false); }
+};
+$('dealprop').onclick = () => ask(`Draft the proposal email for ${$('dealco').value.trim() || 'this prospect'} as a Gmail draft for me to review, from this deal plan. Lead with what they told me they care about, then the option I should lead with (per vehicle and monthly), the terms, and the next step. Plain text, short, no dashes.\n\n${dealText.slice(0, 3500)}`);
+$('dealcowork').onclick = async () => { if (!mcp || !dealText) return; try { await postToCowork(`Proposal for ${$('dealco').value.trim() || 'new deal'}`, `Write the proposal from this deal plan (also saved under Deal Plans if Ryan saved it). Lead with the recommended option. Draft only.\n\n${dealText.slice(0, 1500)}`, 'Today', 'Ryan'); } catch (e) { resultCard('Not sent', [errCopy(e, 'Notion')], false); } };
+
 /* ---------- Jarvis brain ---------- */
 const RULES = `You are JARVIS, the executive assistant and second brain for Ryan Langseth, who runs OMNI Vehicle Management (Diamond Xpress LLC dba OMNI), a solo fleet washing and detailing business based in Elizabethtown KY and moving into Louisville. Main focus: B2B fleets (trucking, delivery, passenger and premium like country clubs, trades). Goals: $10,000/mo recurring by Dec 31 2026; $4.5k feels stable; $6.5k means hire a commission salesman; $20k/mo in 12 months running without Ryan on the tools.
 
@@ -1538,8 +1599,8 @@ async function speak(text, force = false) {
 /* ---------- voice in: Talk (Jarvis answers out loud) and Dictate (fills the box) ----------
    Right Shift: hold to talk, release to send. Double tap to lock listening on; double tap again (or the Talk button) to stop and send.
    Mouse back button or scroll wheel click: toggle talk. Mic button: dictate. Esc cancels. */
-let listening = false, finalText = '', vmode = null, discard = false, locked = false, warnedVoice = false;
-const voiceBtns = () => { $('talk').classList.toggle('on', listening && vmode === 'talk'); $('mic').classList.toggle('on', listening && vmode === 'dictate'); $('talk').classList.toggle('locked', locked); };
+let listening = false, finalText = '', vmode = null, discard = false, locked = false, warnedVoice = false, vTarget = null, vPrefix = '';
+const voiceBtns = () => { $('talk').classList.toggle('on', listening && vmode === 'talk'); $('mic').classList.toggle('on', listening && vmode === 'dictate'); $('dealmic').classList.toggle('on', listening && vmode === 'deal'); $('talk').classList.toggle('locked', locked); };
 function voiceUnavailable() {
   if (warnedVoice) { $('q').focus(); return; } warnedVoice = true; $('q').focus();
   addMsg('sys', 'Claude\'s voice input isn\'t offered in this window. Two ways to talk anyway: open Jarvis beside a chat in the Claude app (voice works there), or use Mac Dictation right here: click the box and press the Dictation key (or turn on "Press Control twice" in System Settings, Keyboard, Dictation), then press Enter to send.');
@@ -1548,6 +1609,7 @@ function voiceStart(mode) {
   if (!dict) { voiceUnavailable(); return false; }
   if (listening || vmode) return true;
   vmode = mode; discard = false; finalText = ''; stopSpeaking();
+  vTarget = mode === 'deal' ? $('dealnotes') : $('q'); vPrefix = mode === 'deal' && vTarget.value.trim() ? vTarget.value.trim() + ' ' : '';
   dict.start().catch((e) => { vmode = null; locked = false; voiceBtns();
     if (e?.code === 'not_granted') addMsg('sys', 'Voice input was declined for Jarvis. Allow the microphone for it in the Claude app, then try again.');
     else if (e?.code !== 'dismissed') addMsg('sys', 'Voice input could not start (' + (e?.code || e?.message || 'error') + ').'); });
@@ -1556,13 +1618,14 @@ function voiceStart(mode) {
 function voiceStop(send) { discard = !send; locked = false; if (dict && vmode) dict.stop().catch(() => {}); voiceBtns(); }
 function voiceToggle(mode) { if (vmode) voiceStop(true); else voiceStart(mode); }
 function wireDict() {
-  dict.onPartial(({ text }) => { if (vmode) $('q').value = (finalText + ' ' + text).trim(); });
-  dict.onFinal(({ text }) => { if (vmode) { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; } });
+  dict.onPartial(({ text }) => { if (vmode && vTarget) vTarget.value = vPrefix + (finalText + ' ' + text).trim(); });
+  dict.onFinal(({ text }) => { if (vmode && vTarget) { finalText = (finalText + ' ' + text).trim(); vTarget.value = vPrefix + finalText; } });
   dict.onState(({ state }) => {
     listening = state === 'listening';
     if (listening) { setState('listen', vmode === 'talk' ? (locked ? 'LISTENING · LOCKED' : 'LISTENING') : 'DICTATING'); voiceBtns(); return; }
     const mode = vmode; vmode = null; locked = false; setState(null); voiceBtns();
     const t = $('q').value.trim();
+    if (mode === 'deal') { if (discard) $('dealnotes').value = vPrefix.trim(); else $('dealnotes').focus(); store.set('jarvis.dealNotes', $('dealnotes').value); return; }
     if (discard) { if (mode === 'talk') $('q').value = ''; return; }
     if (mode === 'talk' && t) { $('q').value = ''; talkReply = true; ask(t); }
     else if (mode === 'dictate') $('q').focus();
@@ -1570,6 +1633,7 @@ function wireDict() {
 }
 let talkReply = false;
 $('mic').onclick = () => voiceToggle('dictate');
+$('dealmic').onclick = () => voiceToggle('deal');
 $('talk').onclick = () => voiceToggle('talk');
 // Right Shift: hold to talk, double tap to lock
 let rs = { down: false, at: 0, other: false, lastTap: 0 };
