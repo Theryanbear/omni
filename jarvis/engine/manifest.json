@@ -1,0 +1,17 @@
+{
+ "version": "0.2.0",
+ "files": [
+  "__init__.py",
+  "__main__.py",
+  "api.py",
+  "cli.py",
+  "db.py",
+  "engine.py",
+  "mcp_server.py",
+  "render.py",
+  "service.py",
+  "transport.py",
+  "web.py",
+  "worker.py"
+ ]
+}

@@ -4,13 +4,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* VOICE occasion-grade work tool: a heads up display, calm until something needs Ryan
-   IDEA Tony Stark's HUD: an arc reactor core that is the business, panels you flick between
-   PICTURE the reactor: spinning rings whose arcs are recurring revenue toward $10k, days left, Jarvis's state
-   COLOUR night #02060d, holo cyan #3fe0ff, deep teal, amber #ffb547 for money on the table, red for stale
+/* VOICE occasion-grade work tool: a heads up display that runs a business, calm until something needs Ryan
+   IDEA Tony Stark's HUD: a sun (the arc reactor: money) with planets for every part of the business
+   PICTURE the solar system: tilted orbits, planets with progress rings and moons, zoom into the reactor
+   COLOUR night #02060d, holo cyan #3fe0ff, amber #ffb547 money and action, red #ff5468 stale and deadlines, green wins
    TYPE Oxanium (display, numerals) + Rajdhani (text)
    LAYOUT laptop: top bar, flickable screens left, Jarvis comms rail right; phone: bar, screen, comms stacked */
-:root{color-scheme:dark;--bg:#02060d;--bg2:#06131f;--ink:#d9f6ff;--mute:#6fa3b6;--cy:#3fe0ff;--cy2:#1690b8;--cyd:rgba(63,224,255,.14);--line:rgba(63,224,255,.22);--am:#ffb547;--rd:#ff5468;--gn:#5dffb6;--panel:rgba(8,30,46,.55)}
+:root{color-scheme:dark;--bg:#02060d;--ink:#d9f6ff;--mute:#6fa3b6;--cy:#3fe0ff;--cy2:#1690b8;--cyd:rgba(63,224,255,.14);--line:rgba(63,224,255,.22);--am:#ffb547;--rd:#ff5468;--gn:#5dffb6;--panel:rgba(8,30,46,.55)}
 *{box-sizing:border-box;min-width:0}
 html,body{height:100%}
 body{margin:0;background:radial-gradient(ellipse at 35% 40%,#08233a 0%,#030b15 55%,#02060d 100%);color:var(--ink);font:16px/1.45 Rajdhani,system-ui,sans-serif;overflow:hidden}
@@ -27,35 +27,75 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;background:rep
 .chip.ok i{background:var(--gn);box-shadow:0 0 8px var(--gn)}.chip.warn i{background:var(--am)}.chip.bad i{background:var(--rd)}
 .clock{font:500 14px Oxanium,sans-serif;color:var(--cy);font-variant-numeric:tabular-nums;white-space:nowrap}
 .btn{font:600 13px Oxanium,sans-serif;letter-spacing:.06em;color:var(--cy);background:var(--cyd);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;min-height:36px}
-.btn:hover{background:rgba(63,224,255,.24)}.btn:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+.btn:hover{background:rgba(63,224,255,.24)}.btn:focus-visible,button:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
 .btn.am{color:var(--am);border-color:rgba(255,181,71,.4);background:rgba(255,181,71,.1)}
+.btn.rd{color:var(--rd);border-color:rgba(255,84,104,.45);background:rgba(255,84,104,.08)}
+.btn.gn{color:var(--gn);border-color:rgba(93,255,182,.4);background:rgba(93,255,182,.08)}
+.btn:disabled{opacity:.45;cursor:default}
 .main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
 .stage{position:relative;min-height:0;overflow:hidden;perspective:1400px;touch-action:pan-y}
 .screen{position:absolute;inset:0;padding:18px max(3vw,16px) 72px;overflow:auto;transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .55s;will-change:transform}
-.screen h2{font:500 13px Oxanium,sans-serif;letter-spacing:.24em;color:var(--cy);margin:0 0 10px;text-transform:uppercase}
-.nav{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px;z-index:3;pointer-events:none}
-.nav button{pointer-events:auto;font:500 11px Oxanium,sans-serif;letter-spacing:.14em;color:var(--mute);background:rgba(2,6,13,.7);border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer;min-height:32px}
+h2{font:500 13px Oxanium,sans-serif;letter-spacing:.24em;color:var(--cy);margin:0 0 10px;text-transform:uppercase}
+.nav{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px;z-index:3;pointer-events:none;flex-wrap:wrap;padding:0 10px}
+.nav button{pointer-events:auto;font:500 11px Oxanium,sans-serif;letter-spacing:.12em;color:var(--mute);background:rgba(2,6,13,.75);border:1px solid var(--line);border-radius:99px;padding:6px 11px;cursor:pointer;min-height:32px}
 .nav button[aria-current=true]{color:var(--bg);background:var(--cy);border-color:var(--cy);box-shadow:0 0 14px rgba(63,224,255,.6)}
-.hint{position:absolute;right:16px;bottom:52px;font:400 12px Oxanium,sans-serif;color:var(--mute);letter-spacing:.1em;z-index:3}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;position:relative;backdrop-filter:blur(6px)}
-.panel::before,.panel::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--cy);opacity:.7}
+.panel::before,.panel::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--cy);opacity:.7;pointer-events:none}
 .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}
 .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0;border-radius:0 0 10px 0}
-.core{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:center;min-height:100%;padding-bottom:50px}
-.reactor{position:relative;aspect-ratio:1;max-height:calc(100vh - 150px);width:100%;max-width:560px;justify-self:center}
+.note{margin:0 0 10px;color:var(--mute);font-size:14px;max-width:70ch}
+.spin{transform-box:fill-box;transform-origin:center;animation:rot var(--d,40s) linear infinite}
+.spin.rev{animation-direction:reverse}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes rotr{to{transform:rotate(-360deg)}}
+.arc{transition:stroke-dasharray 1.6s cubic-bezier(.2,.8,.2,1)}
+body.think .fast{--d:2.2s!important}body.listen .fast{--d:5s!important}
+body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+/* system view */
+.corewrap{position:relative;height:100%;min-height:520px}
+.sys,.detail{position:absolute;inset:0;transition:transform .8s cubic-bezier(.2,.8,.2,1),opacity .6s}
+.detail{opacity:0;transform:scale(.35);pointer-events:none}
+.corewrap.zin .sys{opacity:0;transform:scale(2.4);pointer-events:none}
+.corewrap.zin .detail{opacity:1;transform:none;pointer-events:auto}
+.sys{perspective:1100px;overflow:hidden}
+.plane{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(64deg)}
+.ring{position:absolute;left:0;top:0;border:1px solid rgba(63,224,255,.22);border-radius:50%;transform:translate(-50%,-50%)}
+.ring.dash{border-style:dashed;border-color:rgba(63,224,255,.12)}
+.ow{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;animation:rot var(--t) linear infinite;animation-delay:var(--dl)}
+.arm{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.pl{transform-style:preserve-3d;animation:rotr var(--t) linear infinite;animation-delay:var(--dl)}
+.up{transform:rotateX(-64deg);transform-style:preserve-3d}
+.planet{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;color:var(--ink);cursor:pointer;padding:4px;font:inherit}
+.planet .orb{position:relative;width:var(--ps,64px);height:var(--ps,64px);border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--pc2),var(--pc) 55%,#020a12 100%);box-shadow:0 0 22px color-mix(in srgb,var(--pc) 55%,transparent),inset -6px -8px 14px rgba(0,0,0,.55);transition:transform .25s}
+.planet:hover .orb,.planet:focus-visible .orb{transform:scale(1.15)}
+.planet .orb svg{position:absolute;inset:-8px;width:calc(100% + 16px);height:calc(100% + 16px)}
+.planet .orb b{position:absolute;inset:0;display:grid;place-items:center;font:600 15px Oxanium,sans-serif;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.8)}
+.planet .lab{font:600 11px Oxanium,sans-serif;letter-spacing:.2em;color:var(--cy);white-space:nowrap;text-shadow:0 0 8px #000}
+.planet .met{font:500 13px Rajdhani,sans-serif;color:var(--ink);white-space:nowrap;background:rgba(2,6,13,.6);padding:0 6px;border-radius:4px}
+.moons{position:absolute;inset:-14px;animation:rot 9s linear infinite;pointer-events:none}
+.moons i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--pc2);box-shadow:0 0 6px var(--pc2);left:50%;top:0;transform-origin:3px calc(var(--ps,64px)/2 + 14px)}
+.sun{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(140px,22vh,190px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle,rgba(63,224,255,.35),rgba(8,40,60,.4) 55%,transparent 72%);cursor:zoom-in;color:var(--ink);padding:0;z-index:2}
+.sun svg{position:absolute;inset:0;width:100%;height:100%}
+.sun .sc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.sun small{font:500 9px Oxanium,sans-serif;letter-spacing:.24em;color:var(--mute)}
+.sun b{font:300 clamp(22px,3.4vh,30px)/1 Oxanium,sans-serif;color:#fff;text-shadow:0 0 18px rgba(63,224,255,.9)}
+.sun span{font:500 10px Oxanium,sans-serif;letter-spacing:.14em;color:var(--cy)}
+.syshud{position:absolute;left:0;top:0;right:0;display:flex;justify-content:space-between;gap:12px;pointer-events:none;flex-wrap:wrap}
+.syshud .panel{pointer-events:auto;max-width:300px;padding:10px 12px}
+.syshud b{font:500 22px Oxanium,sans-serif;font-variant-numeric:tabular-nums}
+.syshud span{display:block;font-size:13px;color:var(--mute)}
+.zoomhint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font:500 11px Oxanium,sans-serif;letter-spacing:.16em;color:var(--mute);white-space:nowrap}
+/* detail (reactor) */
+.core{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:center;min-height:100%;padding-bottom:20px}
+.reactor{position:relative;aspect-ratio:1;max-height:calc(100vh - 170px);width:100%;max-width:540px;justify-self:center}
 .reactor svg{width:100%;height:100%;overflow:visible}
 .rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .rc small{font:500 11px Oxanium,sans-serif;letter-spacing:.3em;color:var(--mute)}
 .rc b{font:300 clamp(34px,6vw,64px)/1 Oxanium,sans-serif;color:#fff;text-shadow:0 0 24px rgba(63,224,255,.8);font-variant-numeric:tabular-nums}
 .rc span{font:500 13px Oxanium,sans-serif;color:var(--cy);letter-spacing:.12em;margin-top:6px}
 .rc em{font:normal 600 12px Oxanium,sans-serif;letter-spacing:.2em;margin-top:10px;color:var(--mute)}
-.spin{transform-box:fill-box;transform-origin:center;animation:rot var(--d,40s) linear infinite}
-.spin.rev{animation-direction:reverse}
-@keyframes rot{to{transform:rotate(360deg)}}
-.arc{transition:stroke-dasharray 1.6s cubic-bezier(.2,.8,.2,1)}
-body.think .fast{--d:2.2s!important}body.listen .fast{--d:5s!important}
-body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.35}}
+.back{position:absolute;left:0;top:0;z-index:2}
 .side{display:grid;gap:14px}
 .gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .gauge{display:flex;gap:12px;align-items:center}
@@ -72,27 +112,68 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
 .empty{color:var(--mute);font-size:14px;padding:10px 4px}
 .stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-bottom:14px}
 .stg{text-align:center}.stg svg{width:84px;height:84px}.stg span{display:block;font:500 12px Oxanium,sans-serif;letter-spacing:.1em;color:var(--mute)}
-.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:56px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.grid3{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr) minmax(0,1fr);gap:14px}
+.stack{display:grid;gap:14px;align-content:start}
 .tbl{width:100%;border-collapse:collapse;font-size:15px}
 .tbl th{text-align:left;font:500 11px Oxanium,sans-serif;letter-spacing:.16em;color:var(--mute);padding:6px;border-bottom:1px solid var(--line)}
 .tbl td{padding:8px 6px;border-bottom:1px solid rgba(63,224,255,.08);vertical-align:top}
-.tbl td.n{text-align:right;font-family:Oxanium,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl td.n,.tbl th.n{text-align:right;font-family:Oxanium,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl tr.sel td{background:rgba(63,224,255,.08)}
+.tbl tr.click{cursor:pointer}
 .tag{font:500 11px Oxanium,sans-serif;letter-spacing:.08em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--cy);white-space:nowrap}
 .tag.rd{color:var(--rd);border-color:rgba(255,84,104,.45)}.tag.am{color:var(--am);border-color:rgba(255,181,71,.45)}.tag.gn{color:var(--gn);border-color:rgba(93,255,182,.4)}
 .scroll{overflow-x:auto}
 .ladder{display:grid;gap:10px}
 .rung{display:grid;grid-template-columns:7em minmax(0,1fr) 5em;gap:10px;align-items:center;font-size:14px}
-.rung .tr{height:10px;border-radius:99px;background:rgba(63,224,255,.1);overflow:hidden}
-.rung .tr i{display:block;height:100%;background:linear-gradient(90deg,var(--cy2),var(--cy));box-shadow:0 0 10px var(--cy);transition:width 1.4s}
+.tr{height:10px;border-radius:99px;background:rgba(63,224,255,.1);overflow:hidden}
+.tr i{display:block;height:100%;background:linear-gradient(90deg,var(--cy2),var(--cy));box-shadow:0 0 10px var(--cy);transition:width 1.4s}
+.tr i.am{background:linear-gradient(90deg,#b5772a,var(--am));box-shadow:0 0 10px var(--am)}
 .rung b{font:500 13px Oxanium,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
 .agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:14px}
 .agent{display:flex;gap:12px;align-items:center}
 .agent svg{width:48px;height:48px;flex:none}
 .agent b{display:block;font-size:15px;line-height:1.2}.agent span{font:500 11px Oxanium,sans-serif;letter-spacing:.1em;color:var(--mute)}
-.agent a{color:var(--cy);font-size:13px}
+a{color:var(--cy)}
 .console{font:13px/1.45 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:8px;padding:12px;min-height:160px;max-height:46vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#9fe9ff}
 .console .cmd{color:var(--am)}.console .err{color:var(--rd)}
 .quick{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+/* dial */
+.mantra{font:600 clamp(18px,2.4vw,26px) Oxanium,sans-serif;letter-spacing:.06em;color:var(--am);text-shadow:0 0 18px rgba(255,181,71,.4);margin:0 0 12px}
+.repring{position:relative;width:min(100%,230px);aspect-ratio:1;margin:0 auto}
+.repring svg{width:100%;height:100%}
+.repring .rc b{font-size:clamp(40px,5vw,58px)}
+.stats3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center;margin-top:10px}
+.stats3 b{display:block;font:500 22px Oxanium,sans-serif}.stats3 span{font-size:12px;color:var(--mute)}
+.lead h3{font:600 24px Oxanium,sans-serif;margin:0;line-height:1.15}
+.lead .who{color:var(--mute);margin:2px 0 8px}
+.phone{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.phone a.call{font:600 20px Oxanium,sans-serif;letter-spacing:.06em;color:var(--bg);background:var(--gn);border-radius:8px;padding:10px 16px;text-decoration:none;box-shadow:0 0 18px rgba(93,255,182,.5)}
+.timer{font:500 18px Oxanium,sans-serif;color:var(--am);font-variant-numeric:tabular-nums}
+.lead .notes{font-size:14px;color:#a9c9d6;max-height:120px;overflow:auto;border-left:2px solid var(--line);padding-left:10px;margin:8px 0;white-space:pre-wrap}
+.outcomes{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.outcomes .btn{min-height:42px}
+.inp{font:16px Rajdhani,sans-serif;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-height:42px;width:100%}
+.inp:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(63,224,255,.15)}
+label.f{display:grid;gap:4px;font-size:13px;color:var(--mute)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
+.burst{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font:700 48px Oxanium,sans-serif;color:var(--gn);text-shadow:0 0 24px var(--gn);pointer-events:none;z-index:9;animation:burst .9s ease-out forwards}
+@keyframes burst{from{opacity:1;transform:translate(-50%,-50%) scale(.6)}to{opacity:0;transform:translate(-50%,-120%) scale(1.3)}}
+/* outreach */
+.inboxes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.ibx{text-align:center}.ibx svg{width:70px;height:70px}.ibx b{display:block;font-size:13px;overflow-wrap:anywhere}.ibx span{font:500 11px Oxanium,sans-serif;color:var(--mute)}
+.abrow{display:grid;grid-template-columns:2.2em minmax(0,1fr) 4.5em;gap:10px;align-items:center;margin:8px 0}
+.abrow b{font:600 16px Oxanium,sans-serif}.abrow .n{font:500 13px Oxanium,sans-serif;text-align:right}
+.abrow small{grid-column:2/4;color:var(--mute);font-size:13px;margin-top:-6px}
+.verdict{border-left:2px solid var(--am);padding-left:10px;margin-top:8px;font-size:15px}
+.steps{display:grid;gap:8px;counter-reset:s}
+.steps li{list-style:none;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.steps li::before{counter-increment:s;content:counter(s);font:600 12px Oxanium,sans-serif;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);color:var(--cy)}
+.steps li.done::before{content:"✓";background:var(--gn);color:var(--bg);border-color:var(--gn)}
+.conn{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(63,224,255,.08)}
+.conn i{width:10px;height:10px;border-radius:50%;background:var(--mute)}.conn i.ok{background:var(--gn);box-shadow:0 0 8px var(--gn)}.conn i.warn{background:var(--am)}
+.conn b{display:block}.conn span{font-size:13px;color:var(--mute)}
+/* comms */
 .comms{border-left:1px solid var(--line);display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;background:linear-gradient(180deg,rgba(6,19,31,.7),rgba(2,6,13,.85))}
 .ch{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
 .ch svg{width:34px;height:34px}
@@ -103,30 +184,33 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
 .msg small{display:block;font:500 10px Oxanium,sans-serif;letter-spacing:.24em;color:var(--mute);margin-bottom:2px}
 .msg.j{border-left:2px solid var(--cy);padding-left:10px}
 .msg.u{color:#a9c9d6;text-align:right}
-.msg.sys{font-size:13px;color:var(--mute)}
+.msg.sm{font-size:13px;color:var(--mute)}
 .card{border:1px solid rgba(255,181,71,.5);background:rgba(255,181,71,.07);border-radius:8px;padding:10px;font-size:14px}
 .card b{display:block;font:600 12px Oxanium,sans-serif;letter-spacing:.14em;color:var(--am);margin-bottom:4px}
-.card code{display:block;font:12.5px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.35);padding:8px;border-radius:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.card code{display:block;font:12.5px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.35);padding:8px;border-radius:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto}
 .card .row{display:flex;gap:8px}
 .cin{padding:10px 12px 12px;border-top:1px solid var(--line);padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
 .chipsq{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
-.chipsq button{font:500 12px Rajdhani,sans-serif;color:var(--ink);background:rgba(63,224,255,.08);border:1px solid var(--line);border-radius:99px;padding:5px 10px;white-space:nowrap;cursor:pointer;min-height:30px}
+.chipsq button{flex:none;font:500 12px Rajdhani,sans-serif;color:var(--ink);background:rgba(63,224,255,.08);border:1px solid var(--line);border-radius:99px;padding:5px 10px;white-space:nowrap;cursor:pointer;min-height:30px}
 .inrow{display:flex;gap:8px;align-items:center}
 .inrow input{flex:1;font:16px Rajdhani,sans-serif;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px}
 .inrow input:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(63,224,255,.15)}
 .mic{width:44px;height:44px;border-radius:50%;border:1px solid var(--cy);background:var(--cyd);color:var(--cy);cursor:pointer;display:grid;place-items:center;flex:none}
 .mic.on{background:var(--cy);color:var(--bg);box-shadow:0 0 18px var(--cy);animation:pulse 1s infinite}
 .mic svg{width:20px;height:20px}
-@media(max-width:980px){body{overflow:auto}.app{height:auto;min-height:100%}.main{grid-template-columns:minmax(0,1fr)}.stage{height:82vh;min-height:560px}.comms{border-left:0;border-top:1px solid var(--line);height:auto;min-height:380px}.log{max-height:50vh}.core{grid-template-columns:minmax(0,1fr)}.reactor{max-width:420px}.grid2{grid-template-columns:minmax(0,1fr)}}
-@media(max-width:600px){.chips .chip:nth-child(n+3){display:none}.clock{display:none}.hint{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 9px;letter-spacing:.06em}.reactor{max-width:340px}}
-@media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on{animation:none!important}.screen,.arc,.rung .tr i{transition:none!important}}
+details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;letter-spacing:.12em;margin:4px 0}
+@media(max-width:1180px){.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid3>.stack:last-child{grid-column:1/-1}}
+@media(max-width:980px){body{overflow:auto}.app{height:auto;min-height:100%}.main{grid-template-columns:minmax(0,1fr)}.stage{height:84vh;min-height:580px}.comms{border-left:0;border-top:1px solid var(--line);height:auto;min-height:380px}.log{max-height:50vh}.core{grid-template-columns:minmax(0,1fr)}.reactor{max-width:400px}.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.grid3>.stack:last-child{grid-column:auto}.syshud .panel:nth-child(n+2){display:none}}
+@media(max-width:600px){.sun{width:92px}.sun small,.sun span{display:none}.zoomhint{display:none}.planet .lab{font-size:9px;letter-spacing:.1em}.chips .chip:nth-child(n+3){display:none}.clock{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 8px;letter-spacing:.04em}.planet .met{display:none}}
+@media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on,.ow,.pl,.moons{animation:none!important}.screen,.arc,.tr i,.sys,.detail{transition:none!important}}
 </style>
 
 <div class="app">
   <header class="bar" id="bar">
     <div class="logo">J.A.R.V.I.S</div>
-    <div class="chips" id="chips">
+    <div class="chips">
       <span class="chip" id="c-notion"><i></i>NOTION</span>
+      <span class="chip" id="c-mail"><i></i>MAIL ENGINE</span>
       <span class="chip" id="c-gmail"><i></i>GMAIL</span>
       <span class="chip" id="c-agents"><i></i>AGENTS</span>
       <span class="chip" id="c-mac"><i></i>MAC</span>
@@ -137,27 +221,45 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
   </header>
 
   <div class="main">
-    <div class="stage" id="stage" aria-roledescription="carousel">
-      <section class="screen" data-name="core" aria-label="Core">
-        <div class="core">
-          <div class="reactor" id="reactor" role="img" aria-label="Recurring revenue toward the 10,000 dollar monthly goal">
-            <svg viewBox="-56 -14 512 428" id="rsvg"></svg>
-            <div class="rc"><small>MONTHLY RECURRING</small><b id="r-mrr">$0</b><span id="r-sub">of $10,000 goal</span><em id="r-state">STANDING BY</em></div>
-          </div>
-          <div class="side">
-            <div class="panel">
-              <h2>Scoreboard</h2>
-              <div class="gauges" id="gauges"></div>
+    <div class="stage" id="stage">
+      <!-- 0 SYSTEM -->
+      <section class="screen" aria-label="System" style="padding-bottom:56px">
+        <div class="corewrap" id="corewrap">
+          <div class="sys" id="sys">
+            <div class="plane" id="plane"></div>
+            <button class="sun" id="sun" aria-label="Zoom into the core">
+              <svg viewBox="0 0 200 200" aria-hidden="true">
+                <circle cx="100" cy="100" r="92" fill="none" stroke="#3fe0ff" stroke-opacity=".25" stroke-width="1" stroke-dasharray="2 5" class="spin" style="--d:50s"/>
+                <circle cx="100" cy="100" r="80" fill="none" stroke="#3fe0ff" stroke-opacity=".12" stroke-width="8"/>
+                <circle id="sun-arc" cx="100" cy="100" r="80" fill="none" stroke="#3fe0ff" stroke-width="8" stroke-dasharray="0 503" transform="rotate(-90 100 100)" class="arc"/>
+                <circle cx="100" cy="100" r="66" fill="none" stroke="#3fe0ff" stroke-opacity=".7" stroke-width="2" stroke-dasharray="90 50" class="spin fast rev" style="--d:14s"/>
+              </svg>
+              <span class="sc"><small>RECURRING</small><b id="sun-mrr">$0</b><span id="sun-sub">OF $10K</span></span>
+            </button>
+            <div class="syshud">
+              <div class="panel"><span>Today's focus</span><b id="hud-focus" style="font-size:16px;font-family:Rajdhani;font-weight:600">Loading…</b></div>
+              <div class="panel" style="text-align:right"><span>Days to Dec 31</span><b id="hud-days">--</b></div>
             </div>
-            <div class="panel">
-              <h2>Needs you</h2>
-              <ul class="list" id="needs"><li class="empty">Connecting to Notion…</li></ul>
+            <div class="zoomhint">CLICK A PLANET · CLICK THE SUN TO ZOOM IN · PINCH TO ZOOM</div>
+          </div>
+          <div class="detail" id="detail">
+            <button class="btn back" id="zoomout">◎ System view</button>
+            <div class="core">
+              <div class="reactor" role="img" aria-label="Recurring revenue toward the 10,000 dollar monthly goal">
+                <svg viewBox="-56 -14 512 428" id="rsvg"></svg>
+                <div class="rc"><small>MONTHLY RECURRING</small><b id="r-mrr">$0</b><span id="r-sub">of $10,000 goal</span><em id="r-state">STANDING BY</em></div>
+              </div>
+              <div class="side">
+                <div class="panel"><h2>Scoreboard</h2><div class="gauges" id="gauges"></div></div>
+                <div class="panel"><h2>Needs you</h2><ul class="list" id="needs"><li class="empty">Connecting to Notion…</li></ul></div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section class="screen" data-name="pipeline" aria-label="Pipeline">
+      <!-- 1 PIPELINE -->
+      <section class="screen" aria-label="Pipeline">
         <h2>Pipeline</h2>
         <div class="stages" id="stages"></div>
         <div class="panel scroll">
@@ -165,41 +267,109 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
         </div>
       </section>
 
-      <section class="screen" data-name="money" aria-label="Money">
-        <div class="grid2">
-          <div class="panel">
-            <h2>Milestones</h2>
-            <div class="ladder" id="ladder"></div>
+      <!-- 2 DIAL -->
+      <section class="screen" aria-label="Smile and dial">
+        <p class="mantra" id="mantra">Smile and dial. It'll change your life.</p>
+        <div class="grid3">
+          <div class="stack">
+            <div class="panel">
+              <h2>Reps today</h2>
+              <div class="repring"><svg viewBox="0 0 200 200" id="repsvg" role="img" aria-label="Calls today toward goal"></svg>
+                <div class="rc"><small>DIALS</small><b id="reps">0</b><span id="reps-goal">of 40</span></div></div>
+              <div class="stats3"><div><b id="st-talk">0</b><span>conversations</span></div><div><b id="st-meet">0</b><span>meetings</span></div><div><b id="st-streak">0</b><span>day streak</span></div></div>
+              <label class="f" style="margin-top:12px">Daily dial goal<input class="inp" id="goal" type="number" min="1" max="300" inputmode="numeric"></label>
+            </div>
+            <div class="panel"><h2>This week</h2><div class="ladder" id="week"></div></div>
           </div>
-          <div class="panel scroll">
-            <h2>Accounts</h2>
-            <table class="tbl"><thead><tr><th>Account</th><th>Status</th><th style="text-align:right">Monthly</th></tr></thead><tbody id="accts"></tbody></table>
+          <div class="panel lead" id="leadcard">
+            <h2>On deck</h2>
+            <div id="leadbody"><div class="empty">Loading your call list…</div></div>
+          </div>
+          <div class="stack">
+            <div class="panel"><h2>Up next</h2><ul class="list" id="queue"></ul></div>
           </div>
         </div>
       </section>
 
-      <section class="screen" data-name="ops" aria-label="Agents and log">
+      <!-- 3 OUTREACH -->
+      <section class="screen" aria-label="Outreach">
+        <div class="grid2">
+          <div class="stack">
+            <div class="panel" id="eng-status"><h2>Mail engine</h2><div id="eng-body"><div class="empty">Checking…</div></div></div>
+            <div class="panel"><h2>Inboxes</h2><p class="note">Sent today against each inbox's limit (new inboxes ramp up slowly to protect deliverability).</p><div class="inboxes" id="inboxes"><div class="empty">No inboxes yet.</div></div>
+              <details id="addbox"><summary>+ Add an inbox</summary>
+                <p class="note">The app password goes straight into ~/omni-mail/.env on your Mac. Claude never sees it. Google: Account, Security, 2-Step Verification, App passwords.</p>
+                <form class="form" id="ibform">
+                  <label class="f">Inbox email<input class="inp" name="email" type="email" required autocomplete="off"></label>
+                  <label class="f">From name<input class="inp" name="from_name" required value="Ryan Langseth"></label>
+                  <label class="f">Provider<select class="inp" name="provider"><option value="google">Google Workspace</option><option value="outlook">Outlook / 365</option><option value="zoho">Zoho</option></select></label>
+                  <label class="f">Login (if alias)<input class="inp" name="smtp_user" placeholder="same as email" autocomplete="off"></label>
+                  <label class="f">App password<input class="inp" name="pw" type="password" required autocomplete="new-password"></label>
+                  <label class="f">Max per day<input class="inp" name="daily_limit" type="number" value="40" min="1" max="100"></label>
+                  <button class="btn am" type="submit">Add and test</button>
+                </form>
+                <p class="note" id="ibmsg"></p>
+              </details>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="panel scroll"><h2>Campaigns</h2>
+              <table class="tbl"><thead><tr><th>Campaign</th><th>Status</th><th class="n">Sent</th><th class="n">Replies</th><th class="n">Rate</th></tr></thead><tbody id="camps"></tbody></table></div>
+            <div class="panel"><h2>A/B test</h2><div id="ab"><div class="empty">Pick a campaign to see its test.</div></div></div>
+            <div class="panel"><h2>New replies</h2><ul class="list" id="replies"><li class="empty">No replies yet.</li></ul></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 MONEY -->
+      <section class="screen" aria-label="Money">
+        <div class="grid2">
+          <div class="stack">
+            <div class="panel"><h2>Milestones</h2><div class="ladder" id="ladder"></div></div>
+            <div class="panel scroll"><h2>Accounts</h2>
+              <table class="tbl"><thead><tr><th>Account</th><th>Status</th><th class="n">Monthly</th></tr></thead><tbody id="accts"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <h2>Fleet quote</h2>
+            <p class="note">Your pricing framework: $190 per labor hour target ($150 floor), frequency and fleet size adjustments, surcharges and travel.</p>
+            <form class="form" id="qform">
+              <label class="f">Vehicles<input class="inp" name="vehicles" type="number" value="10" min="1"></label>
+              <label class="f">Minutes per vehicle<input class="inp" name="minutes" type="number" value="15" min="1"></label>
+              <label class="f">Frequency<select class="inp" name="frequency"><option value="weekly">Weekly</option><option value="biweekly" selected>Bi-weekly</option><option value="monthly">Monthly</option><option value="bimonthly">Every 2 months</option><option value="quarterly">Quarterly</option></select></label>
+              <label class="f">Rate per hour<input class="inp" name="rate" type="number" value="190" min="150"></label>
+              <label class="f">Miles from base<input class="inp" name="miles" type="number" value="10" min="0"></label>
+              <label class="f">Timing<select class="inp" name="timing"><option value="">Normal</option><option value="weekend">Weekend</option><option value="holiday">Holiday</option><option value="sameday">Same day</option></select></label>
+            </form>
+            <div id="qout" style="margin-top:14px"></div>
+            <div class="quick"><button class="btn am" id="qdraft">Have Jarvis draft a proposal</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 AGENTS -->
+      <section class="screen" aria-label="Agents and connections">
         <h2>Claude agents</h2>
         <div class="agents" id="agents"><div class="empty">Looking for running agents…</div></div>
-        <div class="panel">
-          <h2>Jarvis log</h2>
-          <ul class="list" id="jlog"></ul>
+        <div class="grid2">
+          <div class="panel"><h2>Jarvis log</h2><ul class="list" id="jlog"></ul></div>
+          <div class="panel"><h2>Connections</h2><div id="conns"></div></div>
         </div>
       </section>
 
-      <section class="screen" data-name="mac" aria-label="Mac control">
+      <!-- 6 MAC -->
+      <section class="screen" aria-label="Mac control">
         <h2>Mac control</h2>
-        <p style="margin:0;color:var(--mute);max-width:60ch">Ask Jarvis to do things on your MacBook (open apps, find files, organize folders). Every command shows here first and runs only when you press Approve.</p>
+        <p class="note">Ask Jarvis to do things on your MacBook. Every command shows here first and runs only when you press Run it.</p>
         <div class="quick">
           <button class="btn" data-ask="What's using my disk space? Just look, don't delete anything.">Disk check</button>
-          <button class="btn" data-ask="Open my Downloads folder and tell me the 5 newest files.">Newest downloads</button>
+          <button class="btn" data-ask="Show me the 5 newest files in Downloads.">Newest downloads</button>
           <button class="btn" data-ask="How much battery do I have and is anything hogging CPU?">Battery and CPU</button>
+          <button class="btn" data-ask="Show me the last 30 lines of the mail engine worker log.">Mail worker log</button>
         </div>
         <div class="console" id="console">Mac console ready. Commands Jarvis runs will appear here.</div>
       </section>
 
       <nav class="nav" id="nav" aria-label="Screens"></nav>
-      <div class="hint">SWIPE · ← → · 1-5</div>
     </div>
 
     <aside class="comms" aria-label="Jarvis">
@@ -210,11 +380,13 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
       </div>
       <div class="log" id="log" aria-live="polite"></div>
       <div class="cin">
-        <div class="chipsq" id="qchips">
+        <div class="chipsq">
           <button data-ask="Brief me.">Brief me</button>
-          <button data-ask="What's gone stale and who do I call first today?">What's stale?</button>
+          <button data-ask="Prep my calls: who are the top 5 to call right now and the one line opener for each?">Prep my calls</button>
+          <button data-ask="How are my email A/B tests doing? Explain the numbers and recommend the next challenger.">How's my A/B?</button>
+          <button data-ask="What's gone stale and what do I do about it today?">What's stale?</button>
           <button data-ask="Draft follow ups for my three biggest open proposals as Gmail drafts.">Draft follow ups</button>
-          <button data-ask="Give me one outside the box idea to add recurring revenue this month.">Big idea</button>
+          <button data-ask="Give me one new way to add recurring revenue this month that I'm not doing yet, specific to OMNI, with the first step." title="One specific, untried way to grow recurring revenue">Money idea</button>
         </div>
         <form class="inrow" id="form">
           <input id="q" autocomplete="off" placeholder="Talk to Jarvis…  (press ` to speak)" aria-label="Message Jarvis">
@@ -229,97 +401,86 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
 {
 const GOAL = 10000;
 const NS = 'http://www.w3.org/2000/svg';
-const DS = {
-  accounts: 'collection://42342d38-36ae-81c0-9c09-000b90da2916',
-  tracker: 'collection://b4e18a0e-4552-4104-99b9-0d53d52549a3',
-  jarvis: 'collection://42342d38-36ae-81f5-92b6-000bb09ab79f'
+const VIEW = {
+  accounts: 'view://42342d38-36ae-814b-8cab-000c5b2e48cf', engaged: 'view://42342d38-36ae-8134-819c-000cf7ef5504',
+  callq: 'view://42342d38-36ae-81e3-8363-000cc4a19817', cold: 'view://42342d38-36ae-81eb-be70-000c7584a99a',
+  jarvis: 'view://42342d38-36ae-8119-9702-000c7c2588a7', calls: 'view://42342d38-36ae-8164-84f4-000ce2abbda1'
 };
+const DSID = { jarvis: '42342d38-36ae-81f5-92b6-000bb09ab79f', calls: '42342d38-36ae-81f8-aa47-000bfb4cb11b', tracker: 'b4e18a0e-4552-4104-99b9-0d53d52549a3' };
 const STAGES = [['Proposal Sent', 'PROPOSAL'], ['Meeting Set', 'MEETING'], ['Replied: Interested', 'INTERESTED'], ['Existing (Hot) - manual', 'HOT'], ['Not Now', 'NOT NOW']];
 const STAGE = Object.fromEntries(STAGES);
+const CALL_RANK = { 'Proposal Sent': 0, 'Meeting Set': 1, 'Replied: Interested': 2, 'Existing (Hot) - manual': 3, 'No email: call/visit': 4, 'Existing (Warm) - manual': 5, 'Sent': 6 };
+const OUTCOMES = ['No answer', 'Voicemail', 'Gatekeeper', 'Talked', 'Meeting set', 'Not interested', 'Bad number'];
+const MANTRAS = ['Smile and dial. It\'ll change your life.', 'Every no gets you closer to a yes.', 'The phone weighs nothing. Pick it up.', 'Reps build the business.', 'Smile first. They can hear it.', 'One more dial than yesterday.'];
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const sv = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
-const un = (s) => String(s ?? '').replace(/\\([$|*_~`#\[\]()<>])/g, '$1');
+const un = (s) => String(s ?? '').replace(/\\([$|*_~`#\[\]()<>])/g, '$1').replace(/\[([^\]]+)\]\((?:mailto:|https?:)[^)]*\)/g, '$1');
 const num = (v) => Number(v) || 0;
 const fmt = (v) => '$' + Math.round(v || 0).toLocaleString('en-US');
+const pct = (v) => (Math.round((v || 0) * 1000) / 10) + '%';
 const today = () => { const t = new Date(); return new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())); };
 const pday = (s) => (s ? new Date(String(s).slice(0, 10) + 'T00:00:00Z') : null);
 const ago = (s) => { const d = pday(s); return d ? Math.round((today() - d) / 864e5) : null; };
 const md = (d) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
-const isoToday = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
+const isoDay = (t = new Date()) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const digits = (p) => String(p || '').replace(/[^\d+]/g, '');
 
-const S = { accounts: [], pipeline: [], jarvis: [], agents: [], ok: {}, loaded: false };
+const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], agents: [], ok: {}, mail: { state: 'checking' } };
 let mcp = null, sample = null, tts = null, dict = null, desktop = null;
 
 /* ---------- clock ---------- */
 const tick = () => { $('clock').textContent = new Date().toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase(); };
 tick(); setInterval(tick, 15000);
 
-/* ---------- reactor ---------- */
-const R = { arcs: {} };
-function buildReactor() {
-  const s = $('rsvg');
-  s.replaceChildren();
-  const defs = sv('defs', {});
-  const g = sv('radialGradient', { id: 'glow' });
-  g.append(sv('stop', { offset: '0%', 'stop-color': '#3fe0ff', 'stop-opacity': '.55' }), sv('stop', { offset: '60%', 'stop-color': '#1690b8', 'stop-opacity': '.12' }), sv('stop', { offset: '100%', 'stop-color': '#02060d', 'stop-opacity': '0' }));
-  defs.append(g); s.append(defs);
-  s.append(sv('circle', { cx: 200, cy: 200, r: 120, fill: 'url(#glow)', class: 'pulse' }));
-  const ticks = sv('g', { class: 'spin', style: '--d:120s' });
-  for (let i = 0; i < 120; i++) {
-    const a = i * 3 * Math.PI / 180, r1 = i % 10 === 0 ? 184 : 189, r2 = 195;
-    ticks.append(sv('line', { x1: 200 + r1 * Math.cos(a), y1: 200 + r1 * Math.sin(a), x2: 200 + r2 * Math.cos(a), y2: 200 + r2 * Math.sin(a), stroke: '#3fe0ff', 'stroke-opacity': i % 10 === 0 ? .9 : .35, 'stroke-width': i % 10 === 0 ? 2 : 1 }));
-  }
-  s.append(ticks);
-  const C = 2 * Math.PI * 170;
-  s.append(sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .1, 'stroke-width': 14 }));
-  const prog = sv('g', { transform: 'rotate(-90 200 200)' });
-  [['active', '#3fe0ff', 1], ['contracted', '#3fe0ff', .45], ['table', '#ffb547', .85]].forEach(([k, c, o]) => {
-    const a = sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: c, 'stroke-opacity': o, 'stroke-width': 14, 'stroke-dasharray': `0 ${C}`, class: 'arc' });
-    if (k === 'table') a.setAttribute('stroke-dasharray', `0 ${C}`);
-    R.arcs[k] = a; prog.append(a);
-  });
-  [[.45, 'STABLE'], [.65, 'HIRE']].forEach(([f, l]) => {
-    const a = f * 2 * Math.PI;
-    prog.append(sv('line', { x1: 200 + 160 * Math.cos(a), y1: 200 + 160 * Math.sin(a), x2: 200 + 182 * Math.cos(a), y2: 200 + 182 * Math.sin(a), stroke: '#d9f6ff', 'stroke-width': 2 }));
-  });
-  s.append(prog);
-  const mk = (f, l) => { const a = (f * 360 - 90) * Math.PI / 180; const t = sv('text', { x: 200 + 212 * Math.cos(a), y: 200 + 212 * Math.sin(a) + 4, fill: '#6fa3b6', 'font-family': 'Oxanium', 'font-size': 10, 'letter-spacing': 2, 'text-anchor': f > .5 ? 'end' : 'start' }); t.textContent = l; s.append(t); };
-  mk(.45, 'STABLE $4.5K'); mk(.65, 'HIRE $6.5K');
-  s.append(sv('circle', { cx: 200, cy: 200, r: 150, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .5, 'stroke-width': 1, 'stroke-dasharray': '2 6', class: 'spin rev', style: '--d:60s' }));
-  const seg = sv('circle', { cx: 200, cy: 200, r: 136, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .75, 'stroke-width': 3, 'stroke-dasharray': '180 105', class: 'spin fast', style: '--d:18s' });
-  s.append(seg);
-  const C2 = 2 * Math.PI * 118;
-  s.append(sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .12, 'stroke-width': 4 }));
-  R.days = sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .75, 'stroke-width': 4, 'stroke-dasharray': `0 ${C2}`, transform: 'rotate(-90 200 200)', class: 'arc' });
-  s.append(R.days);
-  s.append(sv('circle', { cx: 200, cy: 200, r: 104, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .3, 'stroke-width': 1, 'stroke-dasharray': '40 14 4 14', class: 'spin rev fast', style: '--d:28s' }));
-  R.C = C; R.C2 = C2;
-}
-buildReactor();
-
+/* ---------- rings ---------- */
 function ring(size, frac, color, opts = {}) {
   const r = size / 2 - 5, c = 2 * Math.PI * r, s = sv('svg', { viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': opts.label || '' });
-  s.append(sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-opacity': .15, 'stroke-width': 5 }));
-  const a = sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-dasharray': `0 ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})`, class: 'arc' });
+  s.append(sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-opacity': .15, 'stroke-width': opts.w || 5 }));
+  const a = sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-width': opts.w || 5, 'stroke-linecap': 'round', 'stroke-dasharray': `0 ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})`, class: 'arc' });
   s.append(a);
   s.append(sv('circle', { cx: size / 2, cy: size / 2, r: r - 8, fill: 'none', stroke: color, 'stroke-opacity': .5, 'stroke-width': 1, 'stroke-dasharray': '3 5', class: 'spin' + (opts.rev ? ' rev' : ''), style: `--d:${opts.speed || 14}s` }));
   if (opts.text != null) { const t = sv('text', { x: size / 2, y: size / 2 + 6, 'text-anchor': 'middle', fill: '#fff', 'font-family': 'Oxanium', 'font-size': size / 4 }); t.textContent = opts.text; s.append(t); }
   requestAnimationFrame(() => requestAnimationFrame(() => a.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, frac)) * c} ${c}`)));
   return s;
 }
-
-function countUp(node, to) {
+function countUp(node, to, f = fmt) {
   const from = Number(node.dataset.v || 0); node.dataset.v = to;
-  if (reduced || from === to) { node.textContent = fmt(to); return; }
+  if (reduced || from === to) { node.textContent = f(to); return; }
   const t0 = performance.now();
-  const step = (t) => { const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3); node.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  const step = (t) => { const k = Math.min(1, (t - t0) / 1100), e = 1 - Math.pow(1 - k, 3); node.textContent = f(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
 
-/* ---------- derived numbers ---------- */
+/* ---------- reactor (zoomed in) ---------- */
+const R = { arcs: {} };
+(function buildReactor() {
+  const s = $('rsvg');
+  const defs = sv('defs', {}); const g = sv('radialGradient', { id: 'glow' });
+  g.append(sv('stop', { offset: '0%', 'stop-color': '#3fe0ff', 'stop-opacity': '.55' }), sv('stop', { offset: '60%', 'stop-color': '#1690b8', 'stop-opacity': '.12' }), sv('stop', { offset: '100%', 'stop-color': '#02060d', 'stop-opacity': '0' }));
+  defs.append(g); s.append(defs);
+  s.append(sv('circle', { cx: 200, cy: 200, r: 120, fill: 'url(#glow)', class: 'pulse' }));
+  const ticks = sv('g', { class: 'spin', style: '--d:120s' });
+  for (let i = 0; i < 120; i++) { const a = i * 3 * Math.PI / 180, r1 = i % 10 === 0 ? 184 : 189; ticks.append(sv('line', { x1: 200 + r1 * Math.cos(a), y1: 200 + r1 * Math.sin(a), x2: 200 + 195 * Math.cos(a), y2: 200 + 195 * Math.sin(a), stroke: '#3fe0ff', 'stroke-opacity': i % 10 === 0 ? .9 : .35, 'stroke-width': i % 10 === 0 ? 2 : 1 })); }
+  s.append(ticks);
+  R.C = 2 * Math.PI * 170; R.C2 = 2 * Math.PI * 118;
+  s.append(sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .1, 'stroke-width': 14 }));
+  const prog = sv('g', { transform: 'rotate(-90 200 200)' });
+  [['active', '#3fe0ff', 1], ['contracted', '#3fe0ff', .45], ['table', '#ffb547', .85]].forEach(([k, c, o]) => { const a = sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: c, 'stroke-opacity': o, 'stroke-width': 14, 'stroke-dasharray': `0 ${R.C}`, class: 'arc' }); R.arcs[k] = a; prog.append(a); });
+  [.45, .65].forEach((f) => { const a = f * 2 * Math.PI; prog.append(sv('line', { x1: 200 + 160 * Math.cos(a), y1: 200 + 160 * Math.sin(a), x2: 200 + 182 * Math.cos(a), y2: 200 + 182 * Math.sin(a), stroke: '#d9f6ff', 'stroke-width': 2 })); });
+  s.append(prog);
+  [[.45, 'STABLE $4.5K'], [.65, 'HIRE $6.5K']].forEach(([f, l]) => { const a = (f * 360 - 90) * Math.PI / 180; const t = sv('text', { x: 200 + 212 * Math.cos(a), y: 200 + 212 * Math.sin(a) + 4, fill: '#6fa3b6', 'font-family': 'Oxanium', 'font-size': 10, 'letter-spacing': 2, 'text-anchor': f > .5 ? 'end' : 'start' }); t.textContent = l; s.append(t); });
+  s.append(sv('circle', { cx: 200, cy: 200, r: 150, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .5, 'stroke-width': 1, 'stroke-dasharray': '2 6', class: 'spin rev', style: '--d:60s' }));
+  s.append(sv('circle', { cx: 200, cy: 200, r: 136, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .75, 'stroke-width': 3, 'stroke-dasharray': '180 105', class: 'spin fast', style: '--d:18s' }));
+  s.append(sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .12, 'stroke-width': 4 }));
+  R.days = sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .75, 'stroke-width': 4, 'stroke-dasharray': `0 ${R.C2}`, transform: 'rotate(-90 200 200)', class: 'arc' });
+  s.append(R.days);
+  s.append(sv('circle', { cx: 200, cy: 200, r: 104, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .3, 'stroke-width': 1, 'stroke-dasharray': '40 14 4 14', class: 'spin rev fast', style: '--d:28s' }));
+})();
+
+/* ---------- derived ---------- */
 function money() {
   const sum = (st) => S.accounts.filter((r) => st.includes(r.Status)).reduce((s, r) => s + num(r['Monthly $']), 0);
   const active = sum(['Active']), contracted = sum(['Contracted', 'Trial']);
@@ -328,8 +489,91 @@ function money() {
 }
 const daysLeft = () => Math.max(0, Math.ceil((Date.UTC(2026, 11, 31) - today()) / 864e5));
 const needs = () => S.jarvis.filter((r) => r.Status === 'Needs Ryan').sort((a, b) => num(b['Impact $/mo']) - num(a['Impact $/mo']));
-const engaged = () => S.pipeline.filter((r) => r.Status in STAGE);
+const engaged = () => S.engaged.filter((r) => r.Status in STAGE);
 const stale = (r) => { const a = ago(r['date:Last touch:start']); return r.Status !== 'Not Now' && (a === null || a > 7); };
+const goalDials = () => Math.max(1, num(store.get('jarvis.dialGoal', 40)));
+function callStats() {
+  const t = isoDay();
+  const byDay = {};
+  S.calls.forEach((r) => { const d = String(r['date:Date:start'] || '').slice(0, 10); if (d) (byDay[d] = byDay[d] || []).push(r); });
+  const local = store.get('jarvis.localCalls', []).filter((c) => c.day === t && !S.calls.some((r) => r.url === c.url));
+  const todays = [...(byDay[t] || []), ...local];
+  let streak = 0; const d = new Date();
+  if (!(byDay[t] || local.length)) d.setDate(d.getDate() - 1);
+  for (;;) { const k = isoDay(d); if ((byDay[k] && byDay[k].length) || (k === t && local.length)) { streak++; d.setDate(d.getDate() - 1); } else break; }
+  const week = [];
+  for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); const k = isoDay(x); week.push({ day: x.toLocaleDateString('en-US', { weekday: 'short' }), n: (byDay[k] || []).length + (k === t ? local.length : 0) }); }
+  const count = (o) => todays.filter((r) => r.Outcome === o).length;
+  return { dials: todays.length, talked: count('Talked') + count('Meeting set'), meetings: count('Meeting set'), streak, week, goal: goalDials() };
+}
+
+/* ---------- system view ---------- */
+const PLANETS = [
+  { key: 'pipeline', label: 'PIPELINE', screen: 1, c: '#1f8fbf', c2: '#7fe6ff', ring: 0, phase: 0 },
+  { key: 'dial', label: 'SMILE & DIAL', screen: 2, c: '#c7781c', c2: '#ffd08a', ring: 0, phase: .5 },
+  { key: 'outreach', label: 'OUTREACH', screen: 3, c: '#2a7a8f', c2: '#8af5ff', ring: 1, phase: .2 },
+  { key: 'money', label: 'MONEY', screen: 4, c: '#1d8a5c', c2: '#8affc9', ring: 1, phase: .7 },
+  { key: 'agents', label: 'AGENTS', screen: 5, c: '#5a3fbf', c2: '#c3b3ff', ring: 2, phase: .35 },
+  { key: 'mac', label: 'MAC', screen: 6, c: '#5b6b78', c2: '#d6e6f0', ring: 2, phase: .85 }
+];
+const PERIOD = [70, 105, 150];
+function buildSystem() {
+  const plane = $('plane'); plane.replaceChildren();
+  const box = $('sys'); const W = box.clientWidth || 800, H = box.clientHeight || 600;
+  const small = W < 600;
+  const base = Math.min(W / 2 - (small ? 26 : 50), (H / 2 - 60) / Math.cos(64 * Math.PI / 180) * .92);
+  const radii = small ? [base * .5, base * .76, base * 1] : [base * .45, base * .72, base * .98];
+  radii.forEach((r, i) => { const d = el('div', 'ring' + (i === 1 ? ' dash' : '')); d.style.width = d.style.height = 2 * r + 'px'; plane.append(d); });
+  PLANETS.forEach((p) => {
+    const T = PERIOD[p.ring];
+    const ow = el('div', 'ow'); ow.style.setProperty('--t', T + 's'); ow.style.setProperty('--dl', (-p.phase * T) + 's');
+    const arm = el('div', 'arm'); arm.style.transform = `translateX(${radii[p.ring]}px)`;
+    const pl = el('div', 'pl'); pl.style.setProperty('--t', T + 's'); pl.style.setProperty('--dl', (-p.phase * T) + 's');
+    const up = el('div', 'up');
+    const b = el('button', 'planet'); b.type = 'button'; b.id = 'pl-' + p.key; b.style.setProperty('--pc', p.c); b.style.setProperty('--pc2', p.c2);
+    b.style.setProperty('--ps', (W < 600 ? 46 : 60) + 'px');
+    b.onclick = () => go(p.screen);
+    up.append(b); pl.append(up); arm.append(pl); ow.append(arm); plane.append(ow);
+  });
+  renderPlanets();
+}
+function planetData() {
+  const eg = engaged(), st = eg.filter(stale).length, m = money(), cs = callStats();
+  const ov = S.mail.overview;
+  const sentToday = ov ? ov.mailboxes.reduce((s, x) => s + num(x.sent_today), 0) : 0, cap = ov ? ov.mailboxes.reduce((s, x) => s + num(x.limit_today), 0) : 0;
+  const running = S.agents.filter((a) => /WORK|RUNNING/.test(String(a.status_bucket || a.session_status || ''))).length;
+  return {
+    pipeline: { f: eg.length ? 1 - st / eg.length : 0, center: String(eg.length), met: `${eg.length} live · ${st} stale`, moons: Math.min(5, STAGES.filter(([k]) => eg.some((r) => r.Status === k)).length) },
+    dial: { f: cs.dials / cs.goal, center: String(cs.dials), met: `${cs.dials}/${cs.goal} dials`, moons: Math.min(5, cs.meetings + cs.talked) },
+    outreach: { f: cap ? sentToday / cap : 0, center: ov ? String(sentToday) : '·', met: S.mail.state === 'ready' ? `${sentToday}/${cap} sent` : 'set up', moons: ov ? Math.min(6, ov.mailboxes.length) : 0 },
+    money: { f: m.reach / GOAL, center: Math.round(m.active / 100) / 10 + 'k', met: `${fmt(m.reach)} in reach`, moons: Math.min(5, S.accounts.filter((a) => a.Status === 'Active').length) },
+    agents: { f: running ? .7 : 0, center: String(running), met: `${running} running`, moons: Math.min(5, running) },
+    mac: { f: desktop?.fs ? 1 : 0, center: desktop?.fs ? '✓' : '·', met: desktop?.fs ? 'connected' : 'install app', moons: 0 }
+  };
+}
+function renderPlanets() {
+  const d = planetData();
+  PLANETS.forEach((p) => {
+    const b = $('pl-' + p.key); if (!b) return; const x = d[p.key];
+    b.replaceChildren();
+    const orb = el('span', 'orb');
+    orb.append(ring(80, x.f, p.c2, { w: 3, speed: 12, label: `${p.label}: ${x.met}` }), el('b', null, x.center));
+    if (x.moons) { const mo = el('span', 'moons'); for (let i = 0; i < x.moons; i++) { const m = el('i'); m.style.transform = `rotate(${i * 360 / x.moons}deg)`; mo.append(m); } orb.append(mo); }
+    b.append(orb, el('span', 'lab', p.label), el('span', 'met', x.met));
+    b.setAttribute('aria-label', `${p.label}, ${x.met}. Open.`);
+  });
+  const m = money();
+  countUp($('sun-mrr'), m.active);
+  $('sun-arc').setAttribute('stroke-dasharray', `${Math.min(1, m.active / GOAL) * 503} 503`);
+  $('hud-days').textContent = String(daysLeft());
+  const nd = needs()[0];
+  $('hud-focus').textContent = nd ? un(nd.Entry) : (S.ok.jarvis ? 'Nothing waiting on you' : 'Connecting…');
+}
+const corewrap = $('corewrap');
+const zoom = (z) => { corewrap.classList.toggle('zin', z); store.set('jarvis.zoom', z); };
+$('sun').onclick = () => zoom(true); $('zoomout').onclick = () => zoom(false);
+zoom(store.get('jarvis.zoom', false));
+corewrap.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); if (e.deltaY < -4) zoom(true); else if (e.deltaY > 4) zoom(false); }, { passive: false });
 
 /* ---------- render ---------- */
 function render() {
@@ -337,401 +581,541 @@ function render() {
   countUp($('r-mrr'), m.active);
   $('r-sub').textContent = `of $10,000 · ${fmt(m.reach)} in reach`;
   let x = 0;
-  [['active', m.active], ['contracted', m.contracted], ['table', m.table]].forEach(([k, v]) => {
-    const f = Math.min(1, v / GOAL), off = Math.min(1, x / GOAL);
-    R.arcs[k].setAttribute('stroke-dasharray', `${Math.max(0, Math.min(f, 1 - off)) * R.C} ${R.C}`);
-    R.arcs[k].setAttribute('stroke-dashoffset', `${-off * R.C}`);
-    x += v;
-  });
+  [['active', m.active], ['contracted', m.contracted], ['table', m.table]].forEach(([k, v]) => { const f = Math.min(1, v / GOAL), off = Math.min(1, x / GOAL); R.arcs[k].setAttribute('stroke-dasharray', `${Math.max(0, Math.min(f, 1 - off)) * R.C} ${R.C}`); R.arcs[k].setAttribute('stroke-dashoffset', `${-off * R.C}`); x += v; });
   R.days.setAttribute('stroke-dasharray', `${(daysLeft() / 61) * R.C2} ${R.C2}`);
-
   const gs = $('gauges'); gs.replaceChildren();
   [[m.active, 'Active recurring', '#3fe0ff', m.active / GOAL], [m.contracted, 'Signed, not running', '#7fd8ef', m.contracted / GOAL], [m.table, 'On the table', '#ffb547', m.table / GOAL], [null, 'Days to Dec 31', '#ff5468', daysLeft() / 61]].forEach(([v, l, c, f], i) => {
-    const g = el('div', 'gauge');
-    g.append(ring(66, f, c, { speed: 10 + i * 4, rev: i % 2, label: l }));
+    const g = el('div', 'gauge'); g.append(ring(66, f, c, { speed: 10 + i * 4, rev: i % 2, label: l }));
     const t = el('div'); t.append(el('b', null, v == null ? String(daysLeft()) : fmt(v)), el('span', null, l)); g.append(t); gs.append(g);
   });
+  const nl = $('needs'); nl.replaceChildren(); const nd = needs();
+  if (!S.ok.jarvis) nl.append(el('li', 'empty', S.ok.jarvisErr || 'Connecting to Notion…')); else if (!nd.length) nl.append(el('li', 'empty', 'Nothing waiting on you. Nice.'));
+  nd.slice(0, 6).forEach((r) => { const li = el('li'); li.append(el('i', r.Type === 'Risk' ? 'rd' : 'am')); const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [un(r.Company), r.Type].filter(Boolean).join(' · '))); li.append(t, el('span', 'v', num(r['Impact $/mo']) ? fmt(r['Impact $/mo']) + '/mo' : '')); nl.append(li); });
 
-  const nl = $('needs'); nl.replaceChildren();
-  const nd = needs();
-  if (!S.ok.jarvis) nl.append(el('li', 'empty', S.ok.jarvisErr || 'Connecting to Notion…'));
-  else if (!nd.length) nl.append(el('li', 'empty', 'Nothing waiting on you. Nice.'));
-  nd.slice(0, 6).forEach((r) => {
-    const li = el('li'); li.append(el('i', r.Type === 'Risk' ? 'rd' : 'am'));
-    const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [un(r.Company), r.Type].filter(Boolean).join(' · ')));
-    li.append(t, el('span', 'v', num(r['Impact $/mo']) ? fmt(r['Impact $/mo']) + '/mo' : '')); nl.append(li);
-  });
-
-  const st = $('stages'); st.replaceChildren();
-  const eg = engaged();
-  STAGES.forEach(([k, l], i) => {
-    const n = eg.filter((r) => r.Status === k).length;
-    const d = el('div', 'stg'); d.append(ring(84, eg.length ? n / eg.length : 0, i === 4 ? '#6fa3b6' : i < 2 ? '#ffb547' : '#3fe0ff', { text: String(n), speed: 8 + i * 3, rev: i % 2, label: `${n} ${l}` }), el('span', null, l)); st.append(d);
-  });
-  const pb = $('pipe'); pb.replaceChildren();
-  const order = Object.fromEntries(STAGES.map((s, i) => [s[0], i]));
-  if (!S.ok.pipeline) { const tr = pb.insertRow(); const td = tr.insertCell(); td.colSpan = 4; td.className = 'empty'; td.textContent = S.ok.pipelineErr || 'Connecting to Notion…'; }
+  const st = $('stages'); st.replaceChildren(); const eg = engaged();
+  STAGES.forEach(([k, l], i) => { const n = eg.filter((r) => r.Status === k).length; const d = el('div', 'stg'); d.append(ring(84, eg.length ? n / eg.length : 0, i === 4 ? '#6fa3b6' : i < 2 ? '#ffb547' : '#3fe0ff', { text: String(n), speed: 8 + i * 3, rev: i % 2, label: `${n} ${l}` }), el('span', null, l)); st.append(d); });
+  const pb = $('pipe'); pb.replaceChildren(); const order = Object.fromEntries(STAGES.map((s, i) => [s[0], i]));
+  if (!S.ok.engaged) { const td = pb.insertRow().insertCell(); td.colSpan = 4; td.className = 'empty'; td.textContent = S.ok.engagedErr || 'Connecting to Notion…'; }
   eg.sort((a, b) => order[a.Status] - order[b.Status] || (ago(b['date:Last touch:start']) ?? 999) - (ago(a['date:Last touch:start']) ?? 999)).forEach((r) => {
-    const tr = pb.insertRow();
-    const c1 = tr.insertCell(); c1.append(el('b', null, un(r.Company))); c1.append(el('div', null, un(r.Area))); c1.lastChild.style.cssText = 'font-size:13px;color:var(--mute)';
-    const c2 = tr.insertCell(); c2.append(el('span', 'tag' + (r.Status === 'Proposal Sent' ? ' am' : ''), STAGE[r.Status]));
-    const c3 = tr.insertCell(); const a = ago(r['date:Last touch:start']);
-    c3.append(el('span', 'tag' + (stale(r) ? ' rd' : ''), a === null ? 'never' : a === 0 ? 'today' : `${a}d ago`));
-    const c4 = tr.insertCell(); const nx = pday(r['date:Next touch:start']); c4.textContent = nx ? md(nx) : '';
-    if (nx && nx < today() && r.Status !== 'Not Now') { c4.style.color = 'var(--am)'; c4.textContent += ' due'; }
+    const tr = pb.insertRow(); const c1 = tr.insertCell(); c1.append(el('b', null, un(r.Company))); const ar = el('div', null, un(r.Area)); ar.style.cssText = 'font-size:13px;color:var(--mute)'; c1.append(ar);
+    tr.insertCell().append(el('span', 'tag' + (r.Status === 'Proposal Sent' ? ' am' : ''), STAGE[r.Status]));
+    const a = ago(r['date:Last touch:start']); tr.insertCell().append(el('span', 'tag' + (stale(r) ? ' rd' : ''), a === null ? 'never' : a === 0 ? 'today' : `${a}d ago`));
+    const c4 = tr.insertCell(); const nx = pday(r['date:Next touch:start']); c4.textContent = nx ? md(nx) : ''; if (nx && nx < today() && r.Status !== 'Not Now') { c4.style.color = 'var(--am)'; c4.textContent += ' due'; }
   });
 
   const ld = $('ladder'); ld.replaceChildren();
-  [['Running now', m.active, 'active'], ['+ Signed', m.active + m.contracted], ['+ On the table', m.reach], ['Stable', 4500, 'mark'], ['Hire salesman', 6500, 'mark'], ['Goal', GOAL, 'mark']].forEach(([l, v, k]) => {
-    const r = el('div', 'rung'); r.append(el('span', null, l)); const tr = el('div', 'tr'); const i = el('i'); tr.append(i);
-    if (k === 'mark') i.style.background = 'rgba(217,246,255,.25)';
-    requestAnimationFrame(() => { i.style.width = Math.min(100, v / GOAL * 100) + '%'; });
-    r.append(tr, el('b', null, fmt(v))); ld.append(r);
+  [['Running now', m.active], ['+ Signed', m.active + m.contracted], ['+ On the table', m.reach, 1], ['Stable', 4500, 2], ['Hire salesman', 6500, 2], ['Goal', GOAL, 2]].forEach(([l, v, k]) => {
+    const r = el('div', 'rung'); r.append(el('span', null, l)); const tr = el('div', 'tr'); const i = el('i', k === 1 ? 'am' : null); tr.append(i);
+    if (k === 2) i.style.background = 'rgba(217,246,255,.25)'; requestAnimationFrame(() => { i.style.width = Math.min(100, v / GOAL * 100) + '%'; }); r.append(tr, el('b', null, fmt(v))); ld.append(r);
   });
-  const ab = $('accts'); ab.replaceChildren();
-  const ao = { Active: 0, Trial: 1, Contracted: 2, Paused: 3, Churned: 4 };
+  const ab = $('accts'); ab.replaceChildren(); const ao = { Active: 0, Trial: 1, Contracted: 2, Paused: 3, Churned: 4 };
   if (!S.ok.accounts) { const td = ab.insertRow().insertCell(); td.colSpan = 3; td.className = 'empty'; td.textContent = S.ok.accountsErr || 'Connecting to Notion…'; }
-  S.accounts.slice().sort((a, b) => (ao[a.Status] ?? 9) - (ao[b.Status] ?? 9) || num(b['Monthly $']) - num(a['Monthly $'])).forEach((r) => {
-    const tr = ab.insertRow(); tr.insertCell().textContent = un(r.Account);
-    tr.insertCell().append(el('span', 'tag' + (r.Status === 'Active' ? ' gn' : r.Status === 'Contracted' ? ' am' : ''), r.Status || ''));
-    const c = tr.insertCell(); c.className = 'n'; c.textContent = r['Monthly $'] == null ? 'unknown' : fmt(r['Monthly $']);
-  });
+  S.accounts.slice().sort((a, b) => (ao[a.Status] ?? 9) - (ao[b.Status] ?? 9) || num(b['Monthly $']) - num(a['Monthly $'])).forEach((r) => { const tr = ab.insertRow(); tr.insertCell().textContent = un(r.Account); tr.insertCell().append(el('span', 'tag' + (r.Status === 'Active' ? ' gn' : r.Status === 'Contracted' ? ' am' : ''), r.Status || '')); const c = tr.insertCell(); c.className = 'n'; c.textContent = r['Monthly $'] == null ? 'unknown' : fmt(r['Monthly $']); });
 
   const jl = $('jlog'); jl.replaceChildren();
-  S.jarvis.filter((r) => r.Status !== 'Needs Ryan').slice(0, 14).forEach((r) => {
-    const li = el('li'); li.append(el('i', r.Type === 'Win' ? 'gn' : r.Type === 'Risk' ? 'rd' : ''));
-    const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [r.Type, un(r.Company), md(pday(r['date:Date:start']))].filter(Boolean).join(' · ')));
-    li.append(t, el('span', 'v', r.Status || '')); jl.append(li);
-  });
+  S.jarvis.filter((r) => r.Status !== 'Needs Ryan').slice(0, 14).forEach((r) => { const li = el('li'); li.append(el('i', r.Type === 'Win' ? 'gn' : r.Type === 'Risk' ? 'rd' : '')); const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [r.Type, un(r.Company), md(pday(r['date:Date:start']))].filter(Boolean).join(' · '))); li.append(t, el('span', 'v', r.Status || '')); jl.append(li); });
   if (!jl.children.length) jl.append(el('li', 'empty', S.ok.jarvis ? 'No log entries yet.' : 'Connecting to Notion…'));
 
-  renderAgents();
-  setChip('c-notion', S.ok.accounts && S.ok.pipeline && S.ok.jarvis ? 'ok' : (S.ok.accountsErr || S.ok.pipelineErr || S.ok.jarvisErr) ? 'bad' : '');
+  renderAgents(); renderDial(); renderPlanets(); renderConns();
+  setChip('c-notion', S.ok.accounts && S.ok.engaged && S.ok.jarvis ? 'ok' : (S.ok.accountsErr || S.ok.engagedErr || S.ok.jarvisErr) ? 'bad' : '');
   badge();
 }
-
 function renderAgents() {
   const box = $('agents'); box.replaceChildren();
   if (!S.ok.agents) { box.append(el('div', 'empty', S.ok.agentsErr || 'Looking for running agents…')); return; }
   if (!S.agents.length) { box.append(el('div', 'empty', 'No Claude agents running. Ask Jarvis to dispatch one for a big job.')); return; }
   S.agents.slice(0, 8).forEach((a, i) => {
-    const b = String(a.status_bucket || a.session_status || '');
-    const col = /WORK|RUNNING/.test(b) ? '#3fe0ff' : /BLOCK/.test(b) ? '#ffb547' : /FAIL/.test(b) ? '#ff5468' : '#5dffb6';
-    const d = el('div', 'agent panel');
-    d.append(ring(48, /WORK|RUNNING/.test(b) ? .66 : 1, col, { speed: /WORK|RUNNING/.test(b) ? 3 + i : 30, label: b }));
+    const b = String(a.status_bucket || a.session_status || ''); const work = /WORK|RUNNING/.test(b);
+    const col = work ? '#3fe0ff' : /BLOCK/.test(b) ? '#ffb547' : /FAIL/.test(b) ? '#ff5468' : '#5dffb6';
+    const d = el('div', 'agent panel'); d.append(ring(48, work ? .66 : 1, col, { speed: work ? 3 + i : 30, label: b }));
     const t = el('div'); t.append(el('b', null, a.title || 'Untitled agent'), el('span', null, b.replace(/SESSION_STATUS_(BUCKET_)?/, '').replace(/_/g, ' ')));
     if (/^session_[A-Za-z0-9]+$/.test(a.id || '')) { const l = el('a', null, 'Open'); l.href = 'https://claude.ai/code/' + a.id; l.target = '_blank'; l.rel = 'noopener'; t.append(document.createElement('br'), l); }
     d.append(t); box.append(d);
   });
 }
-
+function renderConns() {
+  const box = $('conns'); box.replaceChildren();
+  const rows = [
+    [S.ok.accounts ? 'ok' : 'warn', 'Notion (the brain)', 'Pipeline, accounts, Jarvis log, call log. Read through saved views, so it does not use your query allowance.'],
+    [S.mail.state === 'ready' ? 'ok' : 'warn', 'Mail engine (your inboxes)', S.mail.state === 'ready' ? `${S.mail.overview?.mailboxes.length || 0} inboxes, ${S.mail.worker?.running ? 'worker running' : 'worker stopped'}` : 'Set up on the Outreach screen'],
+    ['ok', 'Gmail', 'Search, read and draft (never sends on its own)'],
+    [S.ok.agents ? 'ok' : 'warn', 'Claude agents', 'Big jobs run in the cloud'],
+    [desktop?.fs ? 'ok' : 'warn', 'This Mac', desktop?.fs ? 'Commands run only after you approve' : 'Install Jarvis as a desktop app'],
+    ['', 'QuickBooks', 'Connector exists: connect it in claude.ai Settings, Connectors, then ask me to wire it in'],
+    ['', 'Mercury bank', 'Has a full connector (balances, transactions, cash flow). Open the business account there and live cash lands here'],
+    ['', 'Ads (Supermetrics)', 'Already on your account. Ready for Google and Meta ads reporting when you start ads'],
+    ['', 'Urable', 'No connector exists yet. Workaround: export customers and jobs to CSV weekly and I will read them']
+  ];
+  rows.forEach(([s, t, d]) => { const r = el('div', 'conn'); r.append(el('i', s), (() => { const x = el('div'); x.append(el('b', null, t), el('span', null, d)); return x; })(), el('span')); box.append(r); });
+}
 function setChip(id, cls) { const c = $(id); c.classList.remove('ok', 'warn', 'bad'); if (cls) c.classList.add(cls); }
 
 /* ---------- screens / flick ---------- */
 const screens = [...document.querySelectorAll('.screen')];
-const LABELS = ['CORE', 'PIPELINE', 'MONEY', 'AGENTS', 'MAC'];
-let cur = Math.min(screens.length - 1, Math.max(0, store.get('jarvis.screen', 0)));
-let drag = 0;
-const nav = $('nav');
-LABELS.forEach((l, i) => { const b = el('button', null, l); b.onclick = () => go(i); nav.append(b); });
+const LABELS = ['SYSTEM', 'PIPELINE', 'DIAL', 'OUTREACH', 'MONEY', 'AGENTS', 'MAC'];
+let cur = Math.min(screens.length - 1, Math.max(0, store.get('jarvis.screen', 0))); let drag = 0;
+const nav = $('nav'); LABELS.forEach((l, i) => { const b = el('button', null, l); b.onclick = () => go(i); nav.append(b); });
 function layout() {
   const w = $('stage').clientWidth || 1;
-  screens.forEach((s, k) => {
-    const d = k - cur + drag / w;
-    s.style.transform = `translateX(${d * 100}%) rotateY(${d * -28}deg) scale(${1 - Math.min(.18, Math.abs(d) * .12)})`;
-    s.style.opacity = String(Math.max(0, 1 - Math.abs(d) * .7));
-    s.style.pointerEvents = k === cur ? 'auto' : 'none';
-    s.setAttribute('aria-hidden', k === cur ? 'false' : 'true');
-    s.style.transition = drag ? 'none' : '';
-  });
+  screens.forEach((s, k) => { const d = k - cur + drag / w; s.style.transform = `translateX(${d * 100}%) rotateY(${d * -28}deg) scale(${1 - Math.min(.18, Math.abs(d) * .12)})`; s.style.opacity = String(Math.max(0, 1 - Math.abs(d) * .7)); s.style.pointerEvents = k === cur ? 'auto' : 'none'; s.setAttribute('aria-hidden', k === cur ? 'false' : 'true'); s.style.transition = drag ? 'none' : ''; });
   [...nav.children].forEach((b, i) => b.setAttribute('aria-current', i === cur ? 'true' : 'false'));
 }
-function go(i) { cur = (i + screens.length) % screens.length; drag = 0; store.set('jarvis.screen', cur); layout(); }
-layout(); addEventListener('resize', layout);
-const stage = $('stage');
-let px = null, py = null, lock = null;
-stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button,a,input,table')) return; px = e.clientX; py = e.clientY; lock = null; });
-addEventListener('pointermove', (e) => {
-  if (px === null) return;
-  const dx = e.clientX - px, dy = e.clientY - py;
-  if (!lock) { if (Math.abs(dx) > 10) lock = 'x'; else if (Math.abs(dy) > 10) { px = null; return; } }
-  if (lock === 'x') { drag = dx; layout(); }
-});
+function go(i) { cur = (i + screens.length) % screens.length; drag = 0; store.set('jarvis.screen', cur); layout(); if (cur === 3) mailRefresh(); }
+layout(); let rz; addEventListener('resize', () => { layout(); clearTimeout(rz); rz = setTimeout(buildSystem, 200); });
+const stage = $('stage'); let px = null, py = null, lock = null;
+stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button,a,input,select,table,form,details,.planet')) return; px = e.clientX; py = e.clientY; lock = null; });
+addEventListener('pointermove', (e) => { if (px === null) return; const dx = e.clientX - px, dy = e.clientY - py; if (!lock) { if (Math.abs(dx) > 10) lock = 'x'; else if (Math.abs(dy) > 10) { px = null; return; } } if (lock === 'x') { drag = dx; layout(); } });
 addEventListener('pointerup', () => { if (px === null) return; const d = drag; px = null; drag = 0; if (d < -70) go(cur + 1); else if (d > 70) go(cur - 1); else layout(); });
 let wheelAcc = 0, wheelT = 0;
-stage.addEventListener('wheel', (e) => {
-  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-  e.preventDefault(); const now = performance.now(); if (now - wheelT < 600) return;
-  wheelAcc += e.deltaX; if (Math.abs(wheelAcc) > 90) { go(cur + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelT = now; }
-}, { passive: false });
+stage.addEventListener('wheel', (e) => { if (e.ctrlKey || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; e.preventDefault(); const now = performance.now(); if (now - wheelT < 600) return; wheelAcc += e.deltaX; if (Math.abs(wheelAcc) > 90) { go(cur + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelT = now; } }, { passive: false });
 addEventListener('keydown', (e) => {
-  if (e.target.closest('input,textarea')) return;
+  if (e.target.closest('input,textarea,select')) return;
   if (e.key === 'ArrowRight') go(cur + 1); else if (e.key === 'ArrowLeft') go(cur - 1);
-  else if (/^[1-5]$/.test(e.key)) go(Number(e.key) - 1);
+  else if (/^[1-7]$/.test(e.key)) go(Number(e.key) - 1);
   else if (e.key === '`') { e.preventDefault(); startMic(); }
+  else if (cur === 0 && (e.key === '+' || e.key === '=')) zoom(true); else if (cur === 0 && e.key === '-') zoom(false);
 });
 
-/* ---------- Jarvis state ---------- */
-function setState(s, label) {
-  document.body.classList.remove('think', 'listen', 'speak');
-  if (s) document.body.classList.add(s);
-  $('r-state').textContent = label || 'STANDING BY';
-  $('j-status').textContent = { think: 'Thinking…', listen: 'Listening…', speak: 'Speaking…' }[s] || 'Online';
-}
-
-/* ---------- transcript ---------- */
+/* ---------- Jarvis state + transcript ---------- */
+function setState(s, label) { document.body.classList.remove('think', 'listen', 'speak'); if (s) document.body.classList.add(s); $('r-state').textContent = label || 'STANDING BY'; $('j-status').textContent = { think: 'Thinking…', listen: 'Listening…', speak: 'Speaking…' }[s] || 'Online'; }
 const logBox = $('log');
 let turns = store.get('jarvis.turns', []);
-function addMsg(who, text) {
-  const m = el('div', 'msg ' + who); if (who !== 'sys') m.append(el('small', null, who === 'j' ? 'JARVIS' : 'YOU'));
-  const body = el('span', null, text); m.append(body); logBox.append(m); logBox.scrollTop = logBox.scrollHeight; return body;
-}
+function addMsg(who, text) { const m = el('div', 'msg ' + (who === 'sys' ? 'sm' : who)); if (who !== 'sys') m.append(el('small', null, who === 'j' ? 'JARVIS' : 'YOU')); const body = el('span', null, text); m.append(body); logBox.append(m); logBox.scrollTop = logBox.scrollHeight; return body; }
 turns.slice(-8).forEach((t) => addMsg(t.role === 'user' ? 'u' : 'j', t.content));
-if (!turns.length) addMsg('j', 'Good to see you. Systems are coming online. Say "brief me" whenever you\'re ready.');
-
+if (!turns.length) addMsg('j', 'Good to see you. All systems coming online. Click a planet, or say "brief me".');
 function approval(title, detail, okLabel) {
   return new Promise((resolve) => {
-    const c = el('div', 'card'); c.append(el('b', null, title));
-    const code = el('code', null, detail); c.append(code);
-    const row = el('div', 'row'); const ok = el('button', 'btn am', okLabel || 'Approve'); const no = el('button', 'btn', 'Deny');
-    row.append(ok, no); c.append(row); logBox.append(c); logBox.scrollTop = logBox.scrollHeight;
+    const c = el('div', 'card'); c.append(el('b', null, title), el('code', null, detail));
+    const row = el('div', 'row'); const ok = el('button', 'btn am', okLabel || 'Approve'); const no = el('button', 'btn', 'Deny'); row.append(ok, no); c.append(row); logBox.append(c); logBox.scrollTop = logBox.scrollHeight;
     const done = (v) => { clearTimeout(t); row.replaceChildren(el('span', null, v ? 'Approved' : 'Denied')); resolve(v); };
-    const t = setTimeout(() => done(false), 140000);
-    ok.onclick = () => done(true); no.onclick = () => done(false);
+    const t = setTimeout(() => done(false), 140000); ok.onclick = () => done(true); no.onclick = () => done(false);
   });
 }
 
 /* ---------- connectors ---------- */
 const payload = (res) => { let p = res && (res.payload ?? res); if (typeof p === 'string') { try { p = JSON.parse(p); } catch {} } return p; };
 const call = async (server, tool, input) => payload(await mcp.callTool(server, tool, input));
-const errCopy = (e, server) => ({
-  needs_reauth: `Reconnect ${server} in claude.ai Settings, Connectors.`,
-  server_not_connected: `Add ${server} in claude.ai Settings, Connectors.`,
-  not_in_manifest: `${server} is turned off for Jarvis.`,
-  selection_required: `Pick which ${server} connector Jarvis should use.`,
-  blocked_by_policy: `${server} is blocked by your organization.`,
-  approval_required: `${server} needs your approval.`
-}[e && e.code] || `${server} hiccuped. Will retry on the next refresh.`);
-
-function watchNotion(key, args, every) {
-  mcp.watchTool('Notion', 'notion-query-data-sources', { data: args }, (ev) => {
+const errCopy = (e, server) => ({ needs_reauth: `Reconnect ${server} in claude.ai Settings, Connectors.`, server_not_connected: `Add ${server} in claude.ai Settings, Connectors.`, not_in_manifest: `${server} is turned off for Jarvis.`, selection_required: `Pick which ${server} connector Jarvis should use.`, blocked_by_policy: `${server} is blocked by your organization.`, approval_required: `${server} needs your approval.` }[e && e.code] || `${server} hiccuped. Will retry on the next refresh.`);
+function watchView(key, view, every, size = 100) {
+  mcp.watchTool('Notion', 'notion-query-data-sources', { data: { mode: 'view', view_url: view, page_size: size } }, (ev) => {
     if (ev.type === 'data') { const p = payload(ev.result); S[key] = (p && p.results) || []; S.ok[key] = true; S.ok[key + 'Err'] = null; }
-    else { const keep = ['server_unavailable', 'upstream_error', 'rate_limited'].includes(ev.error.code); if (!keep) { S[key] = []; S.ok[key] = false; } S.ok[key + 'Err'] = errCopy(ev.error, 'Notion'); }
-    render(); notifyNew();
+    else { if (!['server_unavailable', 'upstream_error', 'rate_limited'].includes(ev.error.code)) { S[key] = []; S.ok[key] = false; } S.ok[key + 'Err'] = errCopy(ev.error, 'Notion'); }
+    render(); if (key === 'jarvis') notifyNew();
   }, { refetchInterval: every });
 }
+const refreshNotion = () => mcp?.invalidate('Notion', 'notion-query-data-sources').catch(() => {});
 
 async function boot() {
   [mcp, sample, tts, dict, desktop] = await Promise.all(['mcp', 'sample', 'tts', 'dictation', 'desktop'].map((n) => window.claude.use(n).catch(() => null)));
   if (mcp) {
-    watchNotion('accounts', { mode: 'rows', data_source_url: DS.accounts, limit: 100 }, 300000);
-    watchNotion('pipeline', { mode: 'rows', data_source_url: DS.tracker, limit: 100, filter: { type: 'group', operator: 'or', filters: [{ type: 'property', property: 'Status', propertyType: 'select', operator: 'enum_is', value: STAGES.map((s) => ({ type: 'exact', value: s[0] })) }] } }, 300000);
-    watchNotion('jarvis', { mode: 'rows', data_source_url: DS.jarvis, limit: 60, sort: [{ property: 'Date', direction: 'descending' }] }, 120000);
+    watchView('accounts', VIEW.accounts, 300000); watchView('engaged', VIEW.engaged, 300000); watchView('jarvis', VIEW.jarvis, 120000, 60);
+    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000);
     mcp.watchTool('Claude Code Remote', 'list_sessions', { limit: 8, mine: true }, (ev) => {
       if (ev.type === 'data') { const p = payload(ev.result); S.agents = (p && (p.ccr?.data || p.data || p.sessions)) || []; S.ok.agents = true; setChip('c-agents', 'ok'); }
       else { S.ok.agentsErr = errCopy(ev.error, 'Claude Code Remote'); setChip('c-agents', 'warn'); }
-      renderAgents();
+      renderAgents(); renderPlanets();
     }, { refetchInterval: 120000 });
-  } else {
-    S.ok.accountsErr = S.ok.pipelineErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.';
-    S.ok.agentsErr = 'Agents show up once Jarvis runs inside Claude.';
-    render();
-  }
+  } else { S.ok.accountsErr = S.ok.engagedErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.'; S.ok.agentsErr = 'Agents show up once Jarvis runs inside Claude.'; render(); }
   if (!sample) addMsg('sys', 'Jarvis\'s brain needs Claude. Open this page in the Claude app or claude.ai.');
-  if (!dict) $('mic').hidden = true;
+  if (!dict) $('mic').hidden = true; else wireDict();
   if (!tts) $('voice').hidden = true;
-  setupDesktop();
+  await setupDesktop();
+  mailDetect();
 }
 
 /* ---------- desktop ---------- */
 function drawIcon(size = 256) {
   const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), h = size / 2;
-  const bg = x.createRadialGradient(h, h, 10, h, h, h); bg.addColorStop(0, '#0b3550'); bg.addColorStop(1, '#02060d');
-  x.fillStyle = bg; x.beginPath(); x.roundRect(0, 0, size, size, size * .22); x.fill();
+  const bg = x.createRadialGradient(h, h, 10, h, h, h); bg.addColorStop(0, '#0b3550'); bg.addColorStop(1, '#02060d'); x.fillStyle = bg; x.beginPath(); x.roundRect(0, 0, size, size, size * .22); x.fill();
   x.strokeStyle = '#3fe0ff'; x.shadowColor = '#3fe0ff'; x.shadowBlur = 18;
   [[.38, 10, [size * .9, size * .25]], [.3, 5, [size * .3, size * .12]], [.2, 4, []]].forEach(([r, w, d]) => { x.lineWidth = w; x.setLineDash(d); x.beginPath(); x.arc(h, h, size * r, 0, Math.PI * 2); x.stroke(); });
-  x.setLineDash([]); x.fillStyle = '#c9f8ff'; x.beginPath(); x.arc(h, h, size * .1, 0, Math.PI * 2); x.fill();
-  return c.toDataURL('image/png');
+  x.setLineDash([]); x.fillStyle = '#c9f8ff'; x.beginPath(); x.arc(h, h, size * .1, 0, Math.PI * 2); x.fill(); return c.toDataURL('image/png');
 }
-function drawTray() {
-  const c = document.createElement('canvas'); c.width = c.height = 36; const x = c.getContext('2d');
-  x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath(); x.arc(18, 18, 14, 0, Math.PI * 2); x.stroke();
-  x.lineWidth = 2; x.setLineDash([6, 4]); x.beginPath(); x.arc(18, 18, 8, 0, Math.PI * 2); x.stroke();
-  x.setLineDash([]); x.fillStyle = '#000'; x.beginPath(); x.arc(18, 18, 3.5, 0, Math.PI * 2); x.fill();
-  return c.toDataURL('image/png');
-}
+function drawTray() { const c = document.createElement('canvas'); c.width = c.height = 36; const x = c.getContext('2d'); x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath(); x.arc(18, 18, 14, 0, Math.PI * 2); x.stroke(); x.lineWidth = 2; x.setLineDash([6, 4]); x.beginPath(); x.arc(18, 18, 8, 0, Math.PI * 2); x.stroke(); x.setLineDash([]); x.fillStyle = '#000'; x.beginPath(); x.arc(18, 18, 3.5, 0, Math.PI * 2); x.fill(); return c.toDataURL('image/png'); }
 async function setupDesktop() {
-  if (!desktop) { setChip('c-mac', ''); return; }
-  if (!desktop.fs) {
-    setChip('c-mac', '');
-    try { if ((await desktop.install.state()) === 'available') { const b = $('install'); b.hidden = false; b.onclick = () => desktop.install.request().catch(() => {}); } } catch {}
-    return;
-  }
+  if (!desktop) return;
+  if (!desktop.fs) { try { if ((await desktop.install.state()) === 'available') { const b = $('install'); b.hidden = false; b.onclick = () => desktop.install.request().catch(() => {}); } } catch {} return; }
   $('bar').classList.add('mac');
   desktop.app.dock.setIcon(drawIcon()).catch(() => {});
-  desktop.window.setOptions({ titleBarStyle: 'hiddenInset', dragHeight: 48, backgroundColor: '#02060d', width: 1320, height: 840, minWidth: 420, minHeight: 600 }).catch(() => {});
+  desktop.window.setOptions({ titleBarStyle: 'hiddenInset', dragHeight: 48, backgroundColor: '#02060d', width: 1360, height: 860, minWidth: 420, minHeight: 600 }).catch(() => {});
   const st = await desktop.permissions.state().catch(() => ({}));
   setChip('c-mac', st['full-access'] === 'granted' ? 'ok' : 'warn');
-  const need = ['shortcuts', 'menu-bar', 'notifications'].filter((p) => st[p] === 'prompt');
-  if (need.length) { const b = $('powers'); b.hidden = false; b.onclick = async () => { b.hidden = true; await desktop.permissions.request(need).catch(() => {}); powers(); }; }
+  const need = ['shortcuts', 'menu-bar', 'notifications', 'full-access'].filter((p) => st[p] === 'prompt');
+  if (need.length) { const b = $('powers'); b.hidden = false; b.onclick = async () => { b.hidden = true; await desktop.permissions.request(need).catch(() => {}); powers(); mailDetect(); }; }
   powers();
 }
 async function powers() {
   const st = await desktop.permissions.state().catch(() => ({}));
+  setChip('c-mac', st['full-access'] === 'granted' ? 'ok' : 'warn');
   if (st.shortcuts === 'granted') desktop.globalShortcut.register('Alt+Shift+J', () => { desktop.window.show(); $('q').focus(); addMsg('sys', 'Summoned. Press ` to talk or type.'); }).catch(() => {});
   if (st['menu-bar'] === 'granted') desktop.tray.set({ icon: drawTray(), toolTip: 'Jarvis · Alt+Shift+J', menu: [
-    { label: 'Show Jarvis', click: () => desktop.window.show() },
-    { label: 'Brief me', click: () => { desktop.window.show(); ask('Brief me.'); } },
-    { label: 'What needs me?', click: () => { desktop.window.show(); go(0); } }
+    { label: 'Show Jarvis', click: () => desktop.window.show() }, { label: 'Brief me', click: () => { desktop.window.show(); ask('Brief me.'); } },
+    { label: 'Smile and dial', click: () => { desktop.window.show(); go(2); } }, { label: 'Outreach', click: () => { desktop.window.show(); go(3); } }
   ] }).catch(() => {});
 }
+const notify = (body) => desktop?.notification?.show({ body: String(body).slice(0, 300) }).catch(() => {});
 let lastNeeds = store.get('jarvis.needsSeen', null);
-function notifyNew() {
-  if (!S.ok.jarvis) return;
-  const ids = needs().map((r) => r.url);
-  if (lastNeeds && desktop?.notification) {
-    const fresh = needs().filter((r) => !lastNeeds.includes(r.url));
-    if (fresh.length) desktop.notification.show({ body: `Jarvis: ${fresh.length} new item${fresh.length > 1 ? 's' : ''} need you. ${un(fresh[0].Entry)}`.slice(0, 300) }).catch(() => {});
-  }
-  lastNeeds = ids; store.set('jarvis.needsSeen', ids);
-}
+function notifyNew() { if (!S.ok.jarvis) return; const ids = needs().map((r) => r.url); if (lastNeeds) { const fresh = needs().filter((r) => !lastNeeds.includes(r.url)); if (fresh.length) notify(`Jarvis: ${fresh.length} new item${fresh.length > 1 ? 's' : ''} need you. ${un(fresh[0].Entry)}`); } lastNeeds = ids; store.set('jarvis.needsSeen', ids); }
 function badge() { if (desktop?.app) desktop.app.dock.setBadge(needs().length ? String(needs().length) : '').catch(() => {}); }
+
+/* ---------- Smile & Dial ---------- */
+let mi = 0; setInterval(() => { mi = (mi + 1) % MANTRAS.length; if (cur === 2) $('mantra').textContent = MANTRAS[mi]; }, 12000);
+$('goal').value = goalDials(); $('goal').onchange = () => { store.set('jarvis.dialGoal', Math.max(1, num($('goal').value))); renderDial(); renderPlanets(); };
+let skipped = new Set(store.get('jarvis.skipped.' + isoDay(), []));
+function callQueue() {
+  const t = isoDay();
+  const calledToday = new Set([...S.calls.filter((r) => String(r['date:Date:start'] || '').startsWith(t)).map((r) => digits(r.Phone)), ...store.get('jarvis.localCalls', []).filter((c) => c.day === t).map((c) => c.phone)]);
+  const warm = S.callq.map((r) => ({ key: r.url, src: 'tracker', company: un(r.Company), contact: un(r.Contact), phone: r.Phone, stage: r.Status, area: un(r.Area), notes: un(r.Notes), hook: un(r.Hook), last: r['date:Last touch:start'], rank: CALL_RANK[r.Status] ?? 9, score: num(r.Score) }));
+  const cold = S.cold.map((r) => ({ key: r.url, src: 'bank', company: un(r.Company), contact: un(r.Officer), phone: r.Phone, stage: 'Cold (lead bank)', area: [un(r.City), r.Zone].filter(Boolean).join(' · '), notes: `${num(r['Power units'])} power units, ${num(r.Drivers)} drivers. USDOT ${r.USDOT || ''}.`, hook: '', rank: 20, score: num(r.Priority) }));
+  return [...warm.sort((a, b) => a.rank - b.rank || (ago(b.last) ?? 999) - (ago(a.last) ?? 999) || b.score - a.score), ...cold]
+    .filter((x) => x.phone && !calledToday.has(digits(x.phone)) && !skipped.has(x.key));
+}
+let timerStart = null, timerInt = null;
+function renderDial() {
+  const cs = callStats();
+  const svg = $('repsvg'); svg.replaceChildren();
+  const C = 2 * Math.PI * 84;
+  svg.append(sv('circle', { cx: 100, cy: 100, r: 84, fill: 'none', stroke: '#ffb547', 'stroke-opacity': .14, 'stroke-width': 12 }));
+  const a = sv('circle', { cx: 100, cy: 100, r: 84, fill: 'none', stroke: '#ffb547', 'stroke-width': 12, 'stroke-linecap': 'round', 'stroke-dasharray': `0 ${C}`, transform: 'rotate(-90 100 100)', class: 'arc' }); svg.append(a);
+  for (let i = 0; i < 60; i++) { const ang = i * 6 * Math.PI / 180; svg.append(sv('line', { x1: 100 + 96 * Math.cos(ang), y1: 100 + 96 * Math.sin(ang), x2: 100 + 99 * Math.cos(ang), y2: 100 + 99 * Math.sin(ang), stroke: '#ffb547', 'stroke-opacity': .4 })); }
+  svg.append(sv('circle', { cx: 100, cy: 100, r: 70, fill: 'none', stroke: '#ffb547', 'stroke-opacity': .5, 'stroke-dasharray': '30 20', class: 'spin', style: '--d:20s' }));
+  requestAnimationFrame(() => requestAnimationFrame(() => a.setAttribute('stroke-dasharray', `${Math.min(1, cs.dials / cs.goal) * C} ${C}`)));
+  countUp($('reps'), cs.dials, (v) => String(Math.round(v))); $('reps-goal').textContent = `of ${cs.goal}`;
+  $('st-talk').textContent = cs.talked; $('st-meet').textContent = cs.meetings; $('st-streak').textContent = cs.streak;
+  const wk = $('week'); wk.replaceChildren(); const mx = Math.max(cs.goal, ...cs.week.map((w) => w.n));
+  cs.week.forEach((w) => { const r = el('div', 'rung'); r.append(el('span', null, w.day)); const tr = el('div', 'tr'); const i = el('i', 'am'); tr.append(i); requestAnimationFrame(() => { i.style.width = (w.n / mx * 100) + '%'; }); r.append(tr, el('b', null, String(w.n))); wk.append(r); });
+  const q = callQueue(); const lb = $('leadbody'); const ql = $('queue');
+  if (!S.ok.callq && !S.ok.cold) { lb.replaceChildren(el('div', 'empty', S.ok.callqErr || 'Loading your call list…')); ql.replaceChildren(); return; }
+  if (!q.length) { lb.replaceChildren(el('div', 'empty', 'Call list is clear. Ask Jarvis to find more people to call.')); ql.replaceChildren(); return; }
+  const L = q[0];
+  if (lb.dataset.key !== L.key) {
+    lb.dataset.key = L.key; lb.replaceChildren(); stopTimer();
+    const h = el('h3', null, L.company); const who = el('div', 'who', [L.contact, L.area].filter(Boolean).join(' · '));
+    const tags = el('div'); tags.append(el('span', 'tag' + (L.src === 'bank' ? '' : ' am'), L.src === 'bank' ? 'COLD' : (STAGE[L.stage] || L.stage)));
+    if (L.last) tags.append(document.createTextNode(' '), el('span', 'tag' + ((ago(L.last) ?? 0) > 7 ? ' rd' : ''), `last touch ${ago(L.last)}d ago`));
+    const ph = el('div', 'phone'); const link = el('a', 'call', '☎ ' + L.phone); link.href = 'tel:' + digits(L.phone); link.onclick = () => startTimer();
+    const tm = el('span', 'timer', '0:00'); tm.id = 'timer'; ph.append(link, tm);
+    const notes = el('div', 'notes', [L.hook && 'Hook: ' + L.hook, L.notes].filter(Boolean).join('\n\n').slice(0, 1200) || 'No notes yet.');
+    const prep = el('button', 'btn', 'Prep me (20 sec brief)'); prep.onclick = () => ask(`Prep me for a cold call to ${L.company} (${L.stage}). Contact: ${L.contact || 'unknown'}. Notes: ${L.notes.slice(0, 600)}. Give me: who they are, the opener line, the likely objection and my answer, and the ask. Under 70 words, spoken style.`);
+    const nt = el('input', 'inp'); nt.placeholder = 'Quick note (optional)'; nt.id = 'callnote';
+    const oc = el('div', 'outcomes'); OUTCOMES.forEach((o) => { const b = el('button', 'btn' + (o === 'Meeting set' ? ' gn' : o === 'Talked' ? ' am' : o === 'Not interested' || o === 'Bad number' ? ' rd' : ''), o); b.onclick = () => logCall(L, o, nt.value); oc.append(b); });
+    const skip = el('button', 'btn', 'Skip for today'); skip.style.marginTop = '8px'; skip.onclick = () => { skipped.add(L.key); store.set('jarvis.skipped.' + isoDay(), [...skipped]); renderDial(); };
+    lb.append(h, who, tags, ph, notes, prep, el('div', null), nt, oc, skip);
+  }
+  ql.replaceChildren(); q.slice(1, 9).forEach((x) => { const li = el('li'); li.append(el('i', x.src === 'bank' ? '' : 'am')); const t = el('div'); t.append(el('span', 't', x.company), el('span', 's', [STAGE[x.stage] || x.stage, x.area].filter(Boolean).join(' · '))); li.append(t, el('span', 'v', x.phone)); ql.append(li); });
+}
+function startTimer() { stopTimer(); timerStart = Date.now(); timerInt = setInterval(() => { const s = Math.round((Date.now() - timerStart) / 1000); const t = $('timer'); if (t) t.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 1000); }
+function stopTimer() { clearInterval(timerInt); timerInt = null; }
+async function logCall(L, outcome, note) {
+  const secs = timerStart ? Math.round((Date.now() - timerStart) / 1000) : 0; stopTimer(); timerStart = null;
+  const local = store.get('jarvis.localCalls', []).filter((c) => c.day === isoDay());
+  const entry = { day: isoDay(), phone: digits(L.phone), company: L.company, Outcome: outcome };
+  local.push(entry); store.set('jarvis.localCalls', local);
+  const burst = el('div', 'burst', outcome === 'Meeting set' ? 'MEETING! 🔥' : 'REP +1'); document.body.append(burst); setTimeout(() => burst.remove(), 950);
+  $('leadbody').dataset.key = ''; renderDial(); renderPlanets();
+  if (outcome === 'Meeting set') notify(`Meeting set with ${L.company}. Log the time in Notion.`);
+  if (!mcp) return;
+  try {
+    const props = { Call: L.company.slice(0, 200), 'date:Date:start': isoDay(), Outcome: outcome, Phone: String(L.phone), Contact: L.contact.slice(0, 200), Seconds: secs };
+    if (note) props.Notes = String(note).slice(0, 1800);
+    const res = await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.calls }, pages: [{ properties: props }] });
+    const url = res?.pages?.[0]?.url; if (url) { entry.url = url.split('?')[0]; store.set('jarvis.localCalls', local); }
+    if (L.src === 'tracker') await call('Notion', 'notion-update-page', { page_id: L.key, command: 'update_properties', properties: { 'date:Last touch:start': isoDay() } });
+    if (outcome === 'Meeting set') await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: [{ properties: { Entry: `Meeting set with ${L.company} (from a call)`, 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: 'Win', Status: 'Needs Ryan', Company: L.company, Detail: `Logged in Smile and Dial. ${note || ''} Put the time on the calendar and update the tracker stage.` } }] });
+    refreshNotion();
+  } catch (e) { addMsg('sys', `Saved the rep here, but Notion didn't take the call log (${errCopy(e, 'Notion')}).`); }
+}
+
+/* ---------- Mail engine (runs on this Mac) ---------- */
+const M = S.mail;
+const ENGINE_DIR = '~/omni-mail';
+let HOME = null, PY = null;
+async function sh(cmd, opts = {}) { return desktop.childProcess.exec(cmd, { timeout: 120000, ...opts }); }
+async function findPython() {
+  if (PY) return PY;
+  const r = await sh('for p in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do [ -x "$p" ] && "$p" -c "import sys; assert sys.version_info>=(3,9)" 2>/dev/null && echo "$p" && break; done');
+  PY = (r.stdout || '').trim().split('\n')[0] || null; return PY;
+}
+async function mailApi(op, args = {}) {
+  const r = await sh(`"${PY}" -m omni_mail api`, { cwd: HOME + '/omni-mail', input: JSON.stringify({ op, args }) });
+  const line = (r.stdout || '').trim().split('\n').pop();
+  let out; try { out = JSON.parse(line); } catch { throw new Error((r.stderr || r.stdout || 'engine did not answer').slice(0, 400)); }
+  if (!out.ok) throw new Error(out.error || 'engine error'); return out.result;
+}
+async function mailDetect() {
+  if (!desktop?.fs) { M.state = 'needs-desktop'; renderMail(); return; }
+  const fa = await desktop.permissions.state('full-access').catch(() => 'unavailable');
+  if (fa !== 'granted') { M.state = 'needs-access'; renderMail(); return; }
+  try {
+    HOME = HOME || await desktop.os.homedir();
+    const has = await desktop.fs.exists(ENGINE_DIR + '/omni_mail/__init__.py');
+    if (!has) { M.state = 'not-installed'; renderMail(); return; }
+    if (!(await findPython())) { M.state = 'no-python'; renderMail(); return; }
+    M.state = 'ready'; await mailRefresh();
+  } catch (e) { M.state = 'error'; M.err = String(e.message || e); renderMail(); }
+  if (!M.poll) M.poll = setInterval(() => { if (M.state === 'ready') mailRefresh(); }, 90000);
+}
+async function mailRefresh() {
+  if (M.state !== 'ready' || M.busy) { renderMail(); return; }
+  M.busy = true;
+  try {
+    M.version = (await mailApi('version')).version;
+    M.overview = await mailApi('overview');
+    M.worker = await sh(`"${PY}" -m omni_mail worker-status`, { cwd: HOME + '/omni-mail' }).then((r) => JSON.parse((r.stdout || '{}').trim().split('\n').pop())).catch(() => ({}));
+    const camps = M.overview.campaigns;
+    if (!M.sel && camps.length) M.sel = camps[0].name;
+    M.ab = M.sel ? await mailApi('ab_report', { campaign: M.sel }).catch(() => null) : null;
+    const since = store.get('jarvis.mailSince', '');
+    const ev = await mailApi('inbox_events', { since, limit: 30 });
+    M.events = ev.concat(M.events || []).slice(0, 30);
+    if (ev.length) { store.set('jarvis.mailSince', ev[0].sent_at); reportReplies(ev.filter((x) => x.kind === 'reply')); }
+    const dec = await mailApi('decisions', { unreported_only: true, mark_reported: true });
+    if (dec.length) reportDecisions(dec);
+    M.err = null;
+  } catch (e) { M.err = String(e.message || e); }
+  M.busy = false; renderMail(); renderPlanets(); renderConns();
+  setChip('c-mail', M.err ? 'bad' : M.worker?.running ? 'ok' : 'warn');
+}
+async function reportReplies(list) {
+  if (!list.length) return;
+  addMsg('sys', `New ${list.length > 1 ? list.length + ' replies' : 'reply'}: ${list.map((r) => r.company || r.from_addr).join(', ')}. Check the Outreach screen.`);
+  notify(`Reply from ${list[0].company || list[0].from_addr}: ${String(list[0].body || '').slice(0, 140)}`);
+  if (!mcp) return;
+  try { await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: list.slice(0, 10).map((r) => ({ properties: { Entry: `Reply from ${r.company || r.from_addr}`.slice(0, 200), 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: 'Action', Status: 'Needs Ryan', Company: r.company || '', Detail: `Campaign ${r.campaign || '?'}, variant ${r.variant || '-'}. "${String(r.body || '').slice(0, 900)}" Draft a reply from the Outreach screen or ask Jarvis.` } })) }); refreshNotion(); } catch {}
+}
+async function reportDecisions(list) {
+  list.forEach((d) => addMsg('sys', 'A/B decision: ' + d.summary));
+  notify('Jarvis changed an A/B test: ' + list[0].summary);
+  if (!mcp) return;
+  try { await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: list.map((d) => ({ properties: { Entry: `A/B: ${d.summary}`.slice(0, 200), 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: 'Decision', Status: 'Done', Detail: JSON.stringify((d.data.report || {}).variants || []).slice(0, 1800) } })) }); refreshNotion(); } catch {}
+}
+function renderMail() {
+  const b = $('eng-body'); b.replaceChildren();
+  const btn = (t, cls, fn) => { const x = el('button', 'btn ' + (cls || ''), t); x.onclick = fn; return x; };
+  const msg = (t) => el('p', 'note', t);
+  if (M.state === 'needs-desktop') b.append(msg('The mail engine runs on your Mac so it can send from all your inboxes. Install Jarvis as a desktop app from the Claude desktop app, then open it.'));
+  else if (M.state === 'needs-access') b.append(msg('Jarvis needs full access on this Mac to install and run the engine.'), btn('Grant Mac access', 'am', async () => { await desktop.permissions.request(['full-access']).catch(() => {}); mailDetect(); }));
+  else if (M.state === 'not-installed') { const s = el('ol', 'steps'); [['Install the mail engine (writes it to ~/omni-mail)', true], ['Set your footer address (required by law)', false], ['Add your inboxes', false], ['Start the background sender', false]].forEach(([t]) => s.append(el('li', null, t))); b.append(msg('One click installs the sending engine on this Mac. It rotates your inboxes, warms new ones up slowly, A/B tests, and stops sequences the moment someone replies.'), s, btn('Install mail engine', 'am', installEngine)); }
+  else if (M.state === 'no-python') b.append(msg('Your Mac needs Python 3.9 or newer. Run this in Terminal, then come back: xcode-select --install'), btn('Check again', '', mailDetect));
+  else if (M.state === 'error') b.append(msg('Engine error: ' + M.err), btn('Retry', '', mailDetect));
+  else if (M.state === 'ready') {
+    const ov = M.overview || { mailboxes: [], campaigns: [] };
+    const sent = ov.mailboxes.reduce((s, x) => s + num(x.sent_today), 0), cap = ov.mailboxes.reduce((s, x) => s + num(x.limit_today), 0);
+    const s = el('ol', 'steps');
+    [['Engine installed (v' + (M.version || '?') + ')', true], ['Footer address set', ov.physical_address_set], ['Inboxes added', ov.mailboxes.length > 0], ['Background sender running', M.worker?.running]].forEach(([t, ok]) => s.append(el('li', ok ? 'done' : null, t)));
+    b.append(s);
+    const row = el('div', 'quick');
+    if (!ov.physical_address_set) row.append(btn('Set footer address', 'am', setFooter));
+    row.append(M.worker?.running ? btn('Stop sender', 'rd', () => workerCmd('uninstall-worker')) : btn('Start background sender', 'gn', () => workerCmd('install-worker')));
+    row.append(btn('Refresh', '', mailRefresh), btn('Update engine', '', installEngine));
+    b.append(row, msg(`${sent} sent today of ${cap} capacity across ${ov.mailboxes.length} inbox${ov.mailboxes.length === 1 ? '' : 'es'}. ${ov.unhandled_replies || 0} replies waiting.` + (M.err ? ' Last error: ' + M.err : '')));
+    const ib = $('inboxes'); ib.replaceChildren();
+    if (!ov.mailboxes.length) ib.append(el('div', 'empty', 'No inboxes yet. Add one below.'));
+    ov.mailboxes.forEach((x, i) => { const d = el('div', 'ibx'); d.append(ring(70, num(x.sent_today) / Math.max(1, num(x.limit_today)), x.active ? '#3fe0ff' : '#6fa3b6', { text: String(x.sent_today), speed: 10 + i * 2, label: x.email }), el('b', null, x.email), el('span', null, `limit ${x.limit_today}/day`)); ib.append(d); });
+    const tb = $('camps'); tb.replaceChildren();
+    if (!ov.campaigns.length) { const td = tb.insertRow().insertCell(); td.colSpan = 5; td.className = 'empty'; td.textContent = 'No campaigns yet. Ask Jarvis: "build a campaign for trucking companies in the core zone".'; }
+    ov.campaigns.forEach((c) => { const tr = tb.insertRow(); tr.className = 'click' + (c.name === M.sel ? ' sel' : ''); tr.onclick = async () => { M.sel = c.name; M.ab = await mailApi('ab_report', { campaign: c.name }).catch(() => null); renderMail(); };
+      tr.insertCell().textContent = c.name; tr.insertCell().append(el('span', 'tag' + (c.status === 'active' ? ' gn' : c.status === 'paused' ? ' am' : ''), c.status)); [c.sent, c.replied, pct(c.reply_rate)].forEach((v) => { const td = tr.insertCell(); td.className = 'n'; td.textContent = String(v); }); });
+    const ab = $('ab'); ab.replaceChildren();
+    if (!M.ab || !M.ab.variants.length) ab.append(el('div', 'empty', M.sel ? `${M.sel} has no A/B variants yet. Ask Jarvis to add a challenger.` : 'Pick a campaign to see its test.'));
+    else {
+      const firsts = M.ab.variants.filter((v) => v.step === 1); const mx = Math.max(.05, ...firsts.map((v) => v.reply_rate));
+      firsts.forEach((v) => { const r = el('div', 'abrow'); r.append(el('b', null, v.label)); const tr = el('div', 'tr'); const i = el('i', v.label === M.ab.leader ? 'am' : null); if (!v.active) i.style.background = 'rgba(217,246,255,.2)'; tr.append(i); requestAnimationFrame(() => { i.style.width = (v.reply_rate / mx * 100) + '%'; }); r.append(tr, el('span', 'n', pct(v.reply_rate)), el('small', null, `"${v.subject}" · ${v.replied}/${v.sent} replied${v.active ? '' : ' · retired'}`)); ab.append(r); });
+      ab.append(el('div', 'verdict', M.ab.verdict));
+      const row = el('div', 'quick'); row.append(btn('Write a new challenger', 'am', () => ask(`Look at the A/B report for campaign "${M.sel}" and write one new challenger variant for step 1 in the same plain, colleague style as the current leader. Follow OMNI's cold email rules. Show it to me, then add it with mail_engine add_variant.`)));
+      ab.append(row);
+    }
+    const rl = $('replies'); rl.replaceChildren(); const reps = (M.events || []).filter((x) => x.kind === 'reply');
+    if (!reps.length) rl.append(el('li', 'empty', 'No replies yet.'));
+    reps.slice(0, 8).forEach((r) => { const li = el('li'); li.append(el('i', 'gn')); const t = el('div'); t.append(el('span', 't', r.company || r.from_addr), el('span', 's', String(r.body || '').slice(0, 160))); const d = el('button', 'btn', 'Draft reply'); d.onclick = () => ask(`Read the thread with ${r.from_addr} in the mail engine and draft a reply for me to approve. Follow OMNI rules: two specific time windows, no prices.`); li.append(t, d); rl.append(li); });
+  }
+}
+async function installEngine() {
+  const b = $('eng-body'); b.prepend(el('p', 'note', 'Installing…'));
+  try {
+    const man = await (await fetch('engine/manifest.json')).json();
+    HOME = HOME || await desktop.os.homedir();
+    await desktop.fs.mkdir(ENGINE_DIR + '/omni_mail', { recursive: true }); await desktop.fs.mkdir(ENGINE_DIR + '/data', { recursive: true });
+    for (const f of man.files) { const txt = await (await fetch('engine/omni_mail/' + f)).text(); await desktop.fs.writeFile(`${ENGINE_DIR}/omni_mail/${f}`, txt, 'utf8'); }
+    if (!(await desktop.fs.exists(ENGINE_DIR + '/.env'))) await desktop.fs.writeFile(ENGINE_DIR + '/.env', '# Mailbox app passwords (written by Jarvis). Never share this file.\n', 'utf8');
+    await sh('chmod 600 ~/omni-mail/.env');
+    addMsg('sys', `Mail engine v${man.version} installed in ~/omni-mail.`);
+  } catch (e) { addMsg('sys', 'Install failed: ' + (e.message || e)); }
+  mailDetect();
+}
+async function setFooter() {
+  const ok = await approval('SET EMAIL FOOTER', 'Diamond Xpress LLC dba OMNI Vehicle Management\n62 Canonade Ct, Elizabethtown, KY 42701', 'Use this');
+  if (!ok) return;
+  await mailApi('set_setting', { key: 'company_name', value: 'Diamond Xpress LLC dba OMNI Vehicle Management' });
+  await mailApi('set_setting', { key: 'physical_address', value: '62 Canonade Ct, Elizabethtown, KY 42701' });
+  mailRefresh();
+}
+async function workerCmd(cmd) {
+  const r = await sh(`"${PY}" -m omni_mail ${cmd}`, { cwd: HOME + '/omni-mail' }).catch((e) => ({ stderr: e.message }));
+  addMsg('sys', cmd === 'install-worker' ? 'Background sender started. It runs whenever your Mac is awake, even with Jarvis closed.' : 'Background sender stopped.');
+  if (r.stderr) addMsg('sys', r.stderr.slice(0, 300)); mailRefresh();
+}
+$('ibform').addEventListener('submit', async (e) => {
+  e.preventDefault(); const f = new FormData(e.target); const out = $('ibmsg');
+  if (M.state !== 'ready') { out.textContent = 'Install the mail engine first.'; return; }
+  const email = String(f.get('email')).trim().toLowerCase(); const key = 'MAILBOX_PW_' + email.replace(/[^a-z0-9]/g, '_').toUpperCase();
+  const pw = String(f.get('pw')).replace(/\s+/g, '');
+  try {
+    out.textContent = 'Saving…';
+    let env = (await desktop.fs.exists(ENGINE_DIR + '/.env')) ? await desktop.fs.readFile(ENGINE_DIR + '/.env', 'utf8') : '';
+    env = env.split('\n').filter((l) => !l.startsWith(key + '=')).join('\n').replace(/\n*$/, '\n') + `${key}=${pw}\n`;
+    await desktop.fs.writeFile(ENGINE_DIR + '/.env', env, 'utf8'); await sh('chmod 600 ~/omni-mail/.env');
+    e.target.pw.value = '';
+    const args = { email, from_name: String(f.get('from_name')), password_env: key, provider: String(f.get('provider')), daily_limit: num(f.get('daily_limit')) || 40, signature: 'Ryan Langseth\nOMNI Vehicle Management' };
+    if (String(f.get('smtp_user')).trim()) args.smtp_user = String(f.get('smtp_user')).trim();
+    await mailApi('add_mailbox', args);
+    out.textContent = 'Testing login…';
+    const t = await mailApi('test_mailbox', { email });
+    out.textContent = `Sending: ${t.smtp}. Reply reading: ${t.imap}.` + (t.smtp !== 'ok' ? ' Check the app password and that 2-Step Verification is on.' : ' Ready. It starts at 10 sends a day and ramps up.');
+    mailRefresh();
+  } catch (err) { out.textContent = 'Could not add it: ' + (err.message || err); }
+});
+
+/* ---------- quote ---------- */
+const FREQ = { weekly: [.7, 52 / 12, 'weekly'], biweekly: [.8, 26 / 12, 'bi-weekly'], monthly: [.9, 1, 'monthly'], bimonthly: [1, .5, 'every 2 months'], quarterly: [1.1, 1 / 3, 'quarterly'] };
+function quote({ vehicles = 10, minutes = 15, frequency = 'biweekly', rate = 190, miles = 10, timing = '' }) {
+  const n = Math.max(1, num(vehicles)), r = Math.max(150, num(rate) || 190), [mult, visits, label] = FREQ[frequency] || FREQ.biweekly;
+  const hours = n * num(minutes || 15) / 60; let visit = hours * r * mult;
+  const size = n <= 4 ? 1.15 : n >= 16 ? .95 : 1; visit *= size;
+  const sur = { weekend: 1.15, holiday: 1.25, sameday: 1.5 }[timing] || 1; visit *= sur;
+  const travel = num(miles) <= 15 ? 25 : 35; visit += travel;
+  return { vehicles: n, frequency: label, labor_hours: Math.round(hours * 100) / 100, per_visit: Math.round(visit), per_vehicle_per_visit: Math.round(visit / n), visits_per_month: Math.round(visits * 100) / 100, monthly: Math.round(visit * visits), effective_hourly: Math.round(visit / Math.max(.25, hours)), notes: [size !== 1 && (size > 1 ? 'small fleet +15%' : '16+ vehicles -5%'), sur !== 1 && `${timing} surcharge`, `travel $${travel}/visit`].filter(Boolean) };
+}
+function renderQuote() {
+  const f = Object.fromEntries(new FormData($('qform'))); const q = quote(f); const o = $('qout'); o.replaceChildren();
+  const g = el('div', 'gauges');
+  [[fmt(q.monthly), 'per month'], [fmt(q.per_visit), 'per visit'], [fmt(q.per_vehicle_per_visit), 'per vehicle per wash'], [fmt(q.effective_hourly), 'effective per labor hour']].forEach(([v, l], i) => { const d = el('div', 'gauge'); const t = el('div'); t.append(el('b', null, v), el('span', null, l)); d.append(t); g.append(d); });
+  o.append(g, el('p', 'note', `${q.vehicles} vehicles ${q.frequency}, ${q.labor_hours} labor hours per visit, ${q.visits_per_month} visits a month. ${q.notes.join(', ')}.`));
+  return q;
+}
+$('qform').addEventListener('input', renderQuote); renderQuote();
+$('qdraft').onclick = () => { const q = renderQuote(); ask(`Draft a fleet wash proposal email for me to review (Gmail draft, no recipient unless I name one): ${JSON.stringify(q)}. Lead with the value, then the price per vehicle and monthly total, the 24 hour redo guarantee, no long-term contract. Ask me which company it's for if you don't know.`); };
 
 /* ---------- Jarvis brain ---------- */
 const RULES = `You are JARVIS, the executive assistant and second brain for Ryan Langseth, who runs OMNI Vehicle Management (Diamond Xpress LLC dba OMNI), a solo fleet washing and detailing business based in Elizabethtown KY and moving into Louisville. Main focus: B2B fleets (trucking, delivery, passenger and premium like country clubs, trades). Goals: $10,000/mo recurring by Dec 31 2026; $4.5k feels stable; $6.5k means hire a commission salesman; $20k/mo in 12 months running without Ryan on the tools.
 
-Voice: like Jarvis from Iron Man. Calm, sharp, quietly witty, unflappable. Use "sir" rarely. Talk like a text from a sharp friend: short, direct, plain. Under 80 words unless asked for more. Give honest pushback and outside the box ideas. Plain text only, no markdown headings or bold; short dash-free bullets are fine. Your replies may be read aloud.
+Voice: like Jarvis from Iron Man. Calm, sharp, quietly witty. Use "sir" rarely. Short, direct, plain, like a text from a sharp friend. Under 80 words unless asked. Honest pushback and specific ideas. Plain text, no markdown headings or bold, no dashes as punctuation. Replies may be read aloud.
 
-You take responsibility for outcomes: point out what is slipping and propose the fix. Never invent facts, names, numbers or history. If you don't know, say so or look it up with a tool.
+You own outcomes: point out what's slipping and propose the fix. Never invent facts, names, numbers or history; look things up or say you don't know. When you change something (a campaign, a variant, a log), say what you changed, why, and the numbers behind it.
 
-Hard rules: never text anyone. Never send email; only create Gmail drafts for Ryan to review and send. Never spend money or sign anything. No free service credits ever. No "book now pay later". In cold outreach: no dollar figures, no dashes, no links, never say "figured", never claim OMNI brings its own water. Proposals and pricing are Ryan's call: draft, don't decide. Fleet rates have been too low; target $190 per labor hour, $150 floor.
+Hard rules: never text anyone, and refuse cold texting (cold marketing texts to cell numbers without consent break the TCPA; suggest calls or email instead). Gmail: drafts only. The mail engine sends cold email from Ryan's own inboxes; starting a campaign or replying to a lead needs Ryan's approval (the tool asks him). Never spend money or sign anything. No free service credits. No "book now pay later". Cold email copy: no dollar figures, no dashes, no links, never "figured", never claim OMNI brings its own water, under 90 words, plain lowercase subjects that sound like a colleague ("quick one about your trucks"), open by admiring something true about them. Pricing: target $190 per labor hour, $150 floor; use price_quote, and pricing in proposals is Ryan's call.
 
-Tools: use search_tracker for lead details, search_gmail and read_email_thread for email, draft_email for drafts, log_to_jarvis to record meaningful actions, decisions, ideas and next steps in Notion, run_mac_command for things on Ryan's MacBook (macOS zsh; prefer read-only commands, never delete without saying exactly what; Ryan approves every command), dispatch_agent for big multi-step jobs that take minutes (research, building a document, a batch of drafts). Ryan approves each dispatch.
+Cold calling matters: Ryan's mantra is smile and dial. Push reps, celebrate streaks, keep call prep short.
 
-A "brief" means: scoreboard vs $10k and days left, the 3 money moves for today (biggest monthly value first, each with the one action), one outside the box idea, one line of pushback if warranted. Under 120 words.`;
+Tools: lookup_lead (tracker details), search_gmail / read_email_thread / draft_email, log_to_jarvis (record actions, decisions with data, ideas, next steps in Notion), mail_engine (the multi inbox cold email engine on Ryan's Mac: campaigns, sequences, A/B variants, leads, stats, replies), price_quote, call_stats, run_mac_command (Ryan approves each), dispatch_agent (big multi step jobs in the cloud, e.g. research 25 leads and write personalized hooks; Ryan approves).
 
+A/B testing: each campaign tests step 1 variants (subject plus opener). The engine retires losers automatically once a winner is confident (30+ sends each, 2+ points, z>=1.65). Your job: explain results with numbers, write new challengers in the winner's spirit, and keep one test running per campaign.
+
+A "brief": scoreboard vs $10k and days left, yesterday's dials and today's dial goal, the 3 money moves for today (biggest monthly value first, each with one action), email engine status (sent, replies, A/B verdicts), one specific new money idea, one line of pushback if warranted. Under 140 words.`;
 function snapshot() {
-  const m = money();
+  const m = money(), cs = callStats(), ov = M.overview;
   return JSON.stringify({
-    today: isoToday(), days_left_to_goal: daysLeft(), money: m,
+    today: isoDay(), days_left_to_goal: daysLeft(), money: m,
+    calls: { today: cs.dials, goal: cs.goal, conversations: cs.talked, meetings: cs.meetings, streak_days: cs.streak, last7: cs.week },
     needs_ryan: needs().slice(0, 12).map((r) => ({ entry: un(r.Entry), company: un(r.Company), type: r.Type, impact_mo: r['Impact $/mo'] ?? null, detail: un(r.Detail).slice(0, 200) })),
     pipeline: engaged().slice(0, 40).map((r) => ({ company: un(r.Company), stage: STAGE[r.Status], area: un(r.Area), last_touch: r['date:Last touch:start'] || null, next_touch: r['date:Next touch:start'] || null, contact: un(r.Contact).slice(0, 80), notes: un(r.Notes).slice(0, 240) })),
     accounts: S.accounts.map((r) => ({ account: un(r.Account), status: r.Status, monthly: r['Monthly $'] ?? null, vehicles: r.Vehicles ?? null })),
+    mail_engine: M.state === 'ready' && ov ? { inboxes: ov.mailboxes.map((x) => ({ email: x.email, sent_today: x.sent_today, limit_today: x.limit_today })), campaigns: ov.campaigns, unhandled_replies: ov.unhandled_replies, selected_ab: M.ab ? { campaign: M.ab.campaign, verdict: M.ab.verdict, variants: M.ab.variants } : null } : { state: M.state },
     recent_log: S.jarvis.slice(0, 10).map((r) => ({ date: r['date:Date:start'], entry: un(r.Entry), type: r.Type, status: r.Status }))
   });
 }
-
 const consoleBox = $('console');
-const conLine = (t, cls) => { const s = el('span', cls, t + '\n'); consoleBox.append(s); consoleBox.scrollTop = consoleBox.scrollHeight; };
+const conLine = (t, cls) => { consoleBox.append(el('span', cls, t + '\n')); consoleBox.scrollTop = consoleBox.scrollHeight; };
 let envId = null;
-
+const MAIL_READ = ['overview', 'mailboxes', 'campaigns', 'campaign', 'ab_report', 'replies', 'inbox_events', 'outbox', 'thread', 'preview', 'validate', 'list_leads', 'decisions', 'settings', 'tick_preview', 'suppression'];
+const MAIL_WRITE = ['create_campaign', 'update_campaign', 'set_sequence', 'add_variant', 'retire_variant', 'upsert_leads', 'update_lead', 'suppress', 'pause', 'unenroll', 'mark_handled', 'sync'];
+const MAIL_OK = ['start', 'send_reply', 'enroll'];
 const TOOLS = [
-  { name: 'search_tracker', description: 'Look up leads in the OMNI Outreach Tracker by company name. Returns up to 5 rows with status, contact, email, phone, touches and full notes.',
+  { name: 'lookup_lead', description: 'Find a lead by company name in the OMNI Outreach Tracker (pipeline and call list) and the cold lead bank. Returns status, contact, email, phone, touches and notes.',
     inputSchema: { type: 'object', properties: { company: { type: 'string' } }, required: ['company'] },
-    execute: async ({ company }) => { const p = await call('Notion', 'notion-query-data-sources', { data: { mode: 'rows', data_source_url: DS.tracker, limit: 5, filter: { type: 'group', operator: 'and', filters: [{ type: 'property', property: 'Company', propertyType: 'title', operator: 'string_contains', value: { type: 'exact', value: String(company) } }] } } });
-      return (p.results || []).map((r) => ({ company: un(r.Company), status: r.Status, contact: un(r.Contact), email: r.Email, phone: r.Phone, area: un(r.Area), touch: r['Touch #'], last_touch: r['date:Last touch:start'], next_touch: r['date:Next touch:start'], thread_subject: r['Thread subject'], notes: un(r.Notes).slice(0, 1500) })); } },
-  { name: 'search_gmail', description: 'Search Ryan\'s Gmail with Gmail query syntax (e.g. "from:kenway.net newer_than:7d", "in:inbox is:unread"). Returns thread ids, subjects, senders, dates and snippets of the latest message.',
+    execute: async ({ company }) => { const q = String(company).toLowerCase(); const hits = [...S.engaged, ...S.callq].filter((r) => un(r.Company).toLowerCase().includes(q));
+      if (hits.length) return [...new Map(hits.map((r) => [r.url, r])).values()].slice(0, 5).map((r) => ({ company: un(r.Company), status: r.Status, contact: un(r.Contact), email: r.Email, phone: r.Phone, area: un(r.Area), touch: r['Touch #'], last_touch: r['date:Last touch:start'], next_touch: r['date:Next touch:start'], thread_subject: r['Thread subject'], notes: un(r.Notes).slice(0, 1500) }));
+      const p = await call('Notion', 'notion-search', { query: String(company), data_source_url: 'collection://' + DSID.tracker, page_size: 3 });
+      const top = (p.results || [])[0]; if (!top) return 'No lead found with that name.';
+      const f = await call('Notion', 'notion-fetch', { id: top.url || top.id }); return String(f.text || JSON.stringify(f)).slice(0, 4000); } },
+  { name: 'search_gmail', description: 'Search Ryan\'s Gmail with Gmail query syntax (e.g. "from:kenway.net newer_than:7d"). Returns thread ids, subjects, senders, dates, snippets.',
     inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
-    execute: async ({ query }) => { setChip('c-gmail', 'warn'); const p = await call('Gmail', 'search_threads', { query: String(query), pageSize: 8, view: 'THREAD_VIEW_SUMMARY' }); setChip('c-gmail', 'ok');
-      return (p.threads || []).map((t) => { const m = (t.messages || [])[0] || {}; return { threadId: t.id, messages: t.messageCount, subject: m.subject, from: m.sender, date: m.date, snippet: String(m.snippet || '').slice(0, 220), messageId: m.id }; }); } },
-  { name: 'read_email_thread', description: 'Read a Gmail thread in full (plain text, each message trimmed). Use the threadId from search_gmail. Returns messages with ids, senders, dates and bodies.',
+    execute: async ({ query }) => { const p = await call('Gmail', 'search_threads', { query: String(query), pageSize: 8, view: 'THREAD_VIEW_SUMMARY' }); setChip('c-gmail', 'ok'); return (p.threads || []).map((t) => { const m = (t.messages || [])[0] || {}; return { threadId: t.id, messages: t.messageCount, subject: m.subject, from: m.sender, date: m.date, snippet: String(m.snippet || '').slice(0, 220), messageId: m.id }; }); } },
+  { name: 'read_email_thread', description: 'Read a Gmail thread in full (plain text, trimmed). Use threadId from search_gmail.',
     inputSchema: { type: 'object', properties: { threadId: { type: 'string' } }, required: ['threadId'] },
-    execute: async ({ threadId }) => { const p = await call('Gmail', 'get_thread', { threadId: String(threadId), messageFormat: 'PLAIN_TEXT' });
-      return (p.messages || []).slice(-6).map((m) => ({ id: m.id, from: m.sender, date: m.date, subject: m.subject, body: String(m.plaintextBody || m.snippet || '').slice(0, 1800) })); } },
-  { name: 'draft_email', description: 'Create a Gmail DRAFT (never sends). Plain text body, no markdown. To reply in a thread, pass replyToMessageId from read_email_thread. Returns the draft id and link.',
+    execute: async ({ threadId }) => { const p = await call('Gmail', 'get_thread', { threadId: String(threadId), messageFormat: 'PLAIN_TEXT' }); return (p.messages || []).slice(-6).map((m) => ({ id: m.id, from: m.sender, date: m.date, subject: m.subject, body: String(m.plaintextBody || m.snippet || '').slice(0, 1800) })); } },
+  { name: 'draft_email', description: 'Create a Gmail DRAFT (never sends). Plain text body. To reply in a thread pass replyToMessageId.',
     inputSchema: { type: 'object', properties: { to: { type: 'array', items: { type: 'string' } }, subject: { type: 'string' }, body: { type: 'string' }, replyToMessageId: { type: 'string' } }, required: ['body'] },
-    execute: async (i) => { const args = { body: String(i.body), includeSignature: true }; if (Array.isArray(i.to)) args.to = i.to.map(String); if (i.subject) args.subject = String(i.subject); if (i.replyToMessageId) args.replyToMessageId = String(i.replyToMessageId);
-      const p = await call('Gmail', 'create_draft', args); setChip('c-gmail', 'ok'); addMsg('sys', `Draft saved in Gmail${args.subject ? ': ' + args.subject : ''}.`); return { draftId: p.id, link: p.viewUrl }; } },
-  { name: 'log_to_jarvis', description: 'Add a row to the Jarvis Log in Notion (shows on the dashboard). type: Action, Win, Next step, Idea, Risk or Decision. status: Open, Needs Ryan, Done.',
+    execute: async (i) => { const args = { body: String(i.body), includeSignature: true }; if (Array.isArray(i.to)) args.to = i.to.map(String); if (i.subject) args.subject = String(i.subject); if (i.replyToMessageId) args.replyToMessageId = String(i.replyToMessageId); const p = await call('Gmail', 'create_draft', args); addMsg('sys', `Draft saved in Gmail${args.subject ? ': ' + args.subject : ''}.`); return { draftId: p.id, link: p.viewUrl }; } },
+  { name: 'log_to_jarvis', description: 'Add a row to the Jarvis Log in Notion (shows on the HUD and dashboard). type: Action, Win, Next step, Idea, Risk, Decision. status: Open, Needs Ryan, Done. For decisions include the data in detail.',
     inputSchema: { type: 'object', properties: { entry: { type: 'string' }, type: { type: 'string' }, status: { type: 'string' }, company: { type: 'string' }, impact_per_month: { type: 'number' }, detail: { type: 'string' } }, required: ['entry', 'type'] },
-    execute: async (i) => { const props = { Entry: String(i.entry).slice(0, 200), 'date:Date:start': isoToday(), Run: 'Ad hoc', Type: ['Action', 'Win', 'Next step', 'Idea', 'Risk', 'Decision'].includes(i.type) ? i.type : 'Action', Status: ['Open', 'Needs Ryan', 'Done'].includes(i.status) ? i.status : 'Open' };
-      if (i.company) props.Company = String(i.company); if (i.detail) props.Detail = String(i.detail).slice(0, 1800); if (Number(i.impact_per_month)) props['Impact $/mo'] = Number(i.impact_per_month);
-      await call('Notion', 'notion-create-pages', { parent: { data_source_id: DS.jarvis.replace('collection://', '') }, pages: [{ properties: props }] });
-      mcp.invalidate('Notion', 'notion-query-data-sources').catch(() => {}); return 'Logged.'; } },
-  { name: 'run_mac_command', description: 'Run one shell command on Ryan\'s MacBook (zsh). Ryan sees it and must press Approve first. Returns stdout and stderr (trimmed). Only works in the installed Jarvis desktop app.',
+    execute: async (i) => { const props = { Entry: String(i.entry).slice(0, 200), 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: ['Action', 'Win', 'Next step', 'Idea', 'Risk', 'Decision'].includes(i.type) ? i.type : 'Action', Status: ['Open', 'Needs Ryan', 'Done'].includes(i.status) ? i.status : 'Open' }; if (i.company) props.Company = String(i.company); if (i.detail) props.Detail = String(i.detail).slice(0, 1800); if (Number(i.impact_per_month)) props['Impact $/mo'] = Number(i.impact_per_month); await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: [{ properties: props }] }); refreshNotion(); return 'Logged.'; } },
+  { name: 'mail_engine', description: 'Drive the cold email engine on Ryan\'s Mac. op is one of: ' + [...MAIL_READ, ...MAIL_WRITE, ...MAIL_OK].join(', ') + '. args are that op\'s arguments, e.g. ab_report {campaign}, create_campaign {name, timezone, send_days, window_start, window_end, daily_limit, mailboxes}, set_sequence {campaign, steps:[{subject, body, delay_days, variants:[{label, subject, body}]}]}, add_variant {campaign, step, label, subject, body}, retire_variant {campaign, step, label}, upsert_leads {leads:[{email, first_name, company, city, hook}], tags}, enroll {campaign, tag | emails}, preview {campaign, lead_email}, thread {lead_email}, send_reply {lead_email, body}. start, enroll and send_reply ask Ryan first. Merge fields like {{first_name|there}} and {{hook}} work in copy.',
+    inputSchema: { type: 'object', properties: { op: { type: 'string' }, args: { type: 'object' } }, required: ['op'] },
+    execute: async ({ op, args }) => {
+      op = String(op); args = args && typeof args === 'object' ? args : {};
+      if (M.state !== 'ready') throw new Error('The mail engine is not set up on this Mac yet (state: ' + M.state + '). Tell Ryan to open the Outreach screen.');
+      if (![...MAIL_READ, ...MAIL_WRITE, ...MAIL_OK].includes(op)) throw new Error('Unknown op ' + op);
+      if (MAIL_OK.includes(op)) { const ok = await approval(op === 'start' ? 'START CAMPAIGN (emails will send)' : op === 'enroll' ? 'ADD LEADS TO CAMPAIGN' : 'SEND REPLY', JSON.stringify(args, null, 2).slice(0, 2000), op === 'send_reply' ? 'Send it' : 'Approve'); if (!ok) return 'Ryan declined.'; }
+      const r = await mailApi(op, args); if (MAIL_WRITE.includes(op) || MAIL_OK.includes(op)) setTimeout(mailRefresh, 300); return JSON.stringify(r).slice(0, 24000);
+    } },
+  { name: 'price_quote', description: 'Price a fleet wash with OMNI\'s framework. frequency: weekly, biweekly, monthly, bimonthly, quarterly. timing: "", weekend, holiday, sameday. Returns per visit, per vehicle and monthly.',
+    inputSchema: { type: 'object', properties: { vehicles: { type: 'number' }, minutes: { type: 'number' }, frequency: { type: 'string' }, rate: { type: 'number' }, miles: { type: 'number' }, timing: { type: 'string' } }, required: ['vehicles'] },
+    execute: async (i) => quote(i) },
+  { name: 'call_stats', description: 'Ryan\'s cold call numbers: dials today vs goal, conversations, meetings, streak, last 7 days, and the next 10 people in the call queue.',
+    execute: async () => ({ ...callStats(), next_up: callQueue().slice(0, 10).map((x) => ({ company: x.company, stage: STAGE[x.stage] || x.stage, contact: x.contact, phone: x.phone, last_touch: x.last })) }) },
+  { name: 'run_mac_command', description: 'Run one shell command on Ryan\'s MacBook (zsh). Ryan sees it and must approve first. Returns stdout/stderr. Only in the installed desktop app. The mail engine lives in ~/omni-mail (worker log: ~/omni-mail/data/worker.log).',
     inputSchema: { type: 'object', properties: { command: { type: 'string' }, reason: { type: 'string' } }, required: ['command', 'reason'] },
     execute: async ({ command, reason }) => {
-      if (!desktop?.childProcess) throw new Error('Mac control only works in the installed Jarvis desktop app. Tell Ryan to install it from the Claude desktop app.');
-      const ok = await approval('RUN ON YOUR MAC · ' + String(reason).slice(0, 120), String(command), 'Run it');
-      if (!ok) return 'Ryan denied this command. Do not retry it.';
-      const st = await desktop.permissions.state('full-access').catch(() => 'unavailable');
-      if (st === 'prompt') await desktop.permissions.request(['full-access']).catch(() => {});
+      if (!desktop?.childProcess) throw new Error('Mac control only works in the installed Jarvis desktop app.');
+      const ok = await approval('RUN ON YOUR MAC · ' + String(reason).slice(0, 120), String(command), 'Run it'); if (!ok) return 'Ryan denied this command. Do not retry it.';
+      if ((await desktop.permissions.state('full-access').catch(() => '')) === 'prompt') await desktop.permissions.request(['full-access']).catch(() => {});
       conLine('$ ' + command, 'cmd');
-      try { const r = await desktop.childProcess.exec(String(command), { timeout: 60000 }); setChip('c-mac', 'ok');
-        conLine((r.stdout || '').slice(0, 4000)); if (r.stderr) conLine(r.stderr.slice(0, 1500), 'err');
-        return { code: r.code, stdout: (r.stdout || '').slice(0, 6000), stderr: (r.stderr || '').slice(0, 1500), truncated: r.truncated };
-      } catch (e) { conLine(String(e.message || e), 'err'); throw new Error(String(e.message || e)); } } },
-  { name: 'dispatch_agent', description: 'Hand a big multi-step job to a Claude agent that runs in the cloud for minutes with Ryan\'s connectors (Notion, Gmail, Drive). Write the task as a complete standalone brief. Ryan approves first. Returns the agent link.',
+      try { const r = await desktop.childProcess.exec(String(command), { timeout: 60000 }); setChip('c-mac', 'ok'); conLine((r.stdout || '').slice(0, 4000)); if (r.stderr) conLine(r.stderr.slice(0, 1500), 'err'); return { code: r.code, stdout: (r.stdout || '').slice(0, 6000), stderr: (r.stderr || '').slice(0, 1500) }; }
+      catch (e) { conLine(String(e.message || e), 'err'); throw new Error(String(e.message || e)); } } },
+  { name: 'dispatch_agent', description: 'Hand a big multi step job to a Claude agent in the cloud (minutes, with Ryan\'s connectors like Notion, Gmail, Drive). Write the task as a complete standalone brief. Ryan approves first. Good for: researching a batch of leads and writing personalized hooks into Notion, building proposals, market research.',
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, task: { type: 'string' } }, required: ['title', 'task'] },
     execute: async ({ title, task }) => {
-      const ok = await approval('DISPATCH AGENT · ' + String(title).slice(0, 80), String(task).slice(0, 1200), 'Launch');
-      if (!ok) return 'Ryan declined the dispatch.';
+      const ok = await approval('DISPATCH AGENT · ' + String(title).slice(0, 80), String(task).slice(0, 1500), 'Launch'); if (!ok) return 'Ryan declined the dispatch.';
       if (!envId) { const e = await call('Claude Code Remote', 'list_environments', {}); const envs = e.environments || []; envId = (envs.find((x) => x.kind === 'remote_cowork') || envs.find((x) => x.state === 'active') || envs[0] || {}).environment_id; }
-      const p = await call('Claude Code Remote', 'create_session', { environment_id: envId, title: String(title).slice(0, 120), prompt: String(task) + '\n\nContext: you work for Ryan at OMNI Vehicle Management. Read the Notion page "OMNI HQ" first and follow its rules. Never text anyone, never send email (drafts only). Log what you did in the Jarvis Log in Notion.' });
-      const id = (JSON.stringify(p).match(/session_[A-Za-z0-9]+/) || [])[0];
-      mcp.invalidate('Claude Code Remote', 'list_sessions').catch(() => {}); go(3);
+      const p = await call('Claude Code Remote', 'create_session', { environment_id: envId, title: String(title).slice(0, 120), prompt: String(task) + '\n\nContext: you work for Ryan at OMNI Vehicle Management. Read the Notion page "OMNI HQ" and the "OMNI Outreach Playbook" first and follow their rules. Never text anyone, never send email (Gmail drafts only). Read Notion databases with saved views (query mode "view"), not SQL or rows mode, to protect the query allowance. Log what you did in the Jarvis Log in Notion.' });
+      const id = (JSON.stringify(p).match(/session_[A-Za-z0-9]+/) || [])[0]; mcp.invalidate('Claude Code Remote', 'list_sessions').catch(() => {}); go(5);
       return id ? { session: id, link: 'https://claude.ai/code/' + id } : p; } }
 ];
-
 let ctl = null, busy = false;
 async function ask(text) {
   text = String(text || '').trim(); if (!text || busy) return;
   if (!sample) { addMsg('sys', 'Jarvis\'s brain needs Claude. Open this in the Claude app.'); return; }
   busy = true; addMsg('u', text);
   turns.push({ role: 'user', content: text }); turns = turns.slice(-16); while (turns.length && turns[0].role !== 'user') turns.shift();
-  const out = addMsg('j', '…'); setState('think', 'PROCESSING');
-  ctl = new AbortController();
+  const out = addMsg('j', '…'); setState('think', 'PROCESSING'); ctl = new AbortController();
   const lim = await sample.limits().catch(() => null);
   try {
-    const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (from Notion, just now):\n' + snapshot() + '\n\nThe conversation with Ryan follows.' }, ...turns];
+    const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (just now):\n' + snapshot() + '\n\nThe conversation with Ryan follows.' }, ...turns];
     const { text: reply } = await sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', effort: 'low', tools: lim?.tools ? TOOLS : undefined, onText: ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); } });
-    out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns);
-    speak(reply);
-  } catch (e) {
-    out.textContent = e.text || ({ not_granted: 'I need permission to use Claude. Allow it and ask again.', rate_limited: 'Usage limit hit. Give it a minute.', cancelled: '(stopped)', refused: 'I can\'t help with that one.' }[e.code] || 'Lost the connection to Claude. Try that again.');
-    turns.pop(); setState(null);
-  } finally { busy = false; if (!document.body.classList.contains('speak')) setState(null); }
+    out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply);
+  } catch (e) { out.textContent = e.text || ({ not_granted: 'I need permission to use Claude. Allow it and ask again.', rate_limited: 'Usage limit hit. Give it a minute.', cancelled: '(stopped)', refused: 'I can\'t help with that one.' }[e.code] || 'Lost the connection to Claude. Try that again.'); turns.pop(); setState(null); }
+  finally { busy = false; if (!document.body.classList.contains('speak')) setState(null); }
 }
-
-let voiceOn = store.get('jarvis.voice', true);
-const vb = $('voice');
+let voiceOn = store.get('jarvis.voice', true); const vb = $('voice');
 const syncVoice = () => { vb.textContent = voiceOn ? 'Voice on' : 'Voice off'; vb.setAttribute('aria-pressed', String(voiceOn)); };
 syncVoice(); vb.onclick = () => { voiceOn = !voiceOn; store.set('jarvis.voice', voiceOn); syncVoice(); if (!voiceOn) tts?.stop?.(); };
-async function speak(text) {
-  if (!tts || !voiceOn) return;
-  const clean = text.replace(/https?:\S+/g, 'the link').replace(/[*#_`>]/g, '').slice(0, 900);
-  setState('speak', 'SPEAKING');
-  try { await tts.speak(clean, { voice: 'glassy', rate: 1.05, language: 'en' }); } catch {} finally { setState(null); }
-}
+async function speak(text) { if (!tts || !voiceOn) return; const clean = text.replace(/https?:\S+/g, 'the link').replace(/[*#_`>]/g, '').slice(0, 900); setState('speak', 'SPEAKING'); try { await tts.speak(clean, { voice: 'glassy', rate: 1.05, language: 'en' }); } catch {} finally { setState(null); } }
 
 /* ---------- voice in ---------- */
 let listening = false, finalText = '';
-function startMic() {
-  if (!dict) return;
-  if (listening) { dict.stop().catch(() => {}); return; }
-  finalText = ''; tts?.stop?.();
-  dict.start().catch((e) => { if (e?.code === 'not_granted') $('mic').hidden = true; });
-}
-if (true) {
-  const wire = () => {
-    if (!dict) return;
-    dict.onPartial(({ text }) => { $('q').value = (finalText + ' ' + text).trim(); });
-    dict.onFinal(({ text }) => { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; });
-    dict.onState(({ state }) => {
-      listening = state === 'listening'; $('mic').classList.toggle('on', listening);
-      if (listening) setState('listen', 'LISTENING');
-      else { setState(null); const t = $('q').value.trim(); if (t) { $('q').value = ''; ask(t); } }
-    });
-  };
-  const waitDict = setInterval(() => { if (dict) { clearInterval(waitDict); wire(); } }, 300);
-  setTimeout(() => clearInterval(waitDict), 15000);
+function startMic() { if (!dict) return; if (listening) { dict.stop().catch(() => {}); return; } finalText = ''; tts?.stop?.(); dict.start().catch((e) => { if (e?.code === 'not_granted') $('mic').hidden = true; }); }
+function wireDict() {
+  dict.onPartial(({ text }) => { $('q').value = (finalText + ' ' + text).trim(); });
+  dict.onFinal(({ text }) => { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; });
+  dict.onState(({ state }) => { listening = state === 'listening'; $('mic').classList.toggle('on', listening); if (listening) setState('listen', 'LISTENING'); else { setState(null); const t = $('q').value.trim(); if (t) { $('q').value = ''; ask(t); } } });
 }
 $('mic').onclick = startMic;
 $('form').addEventListener('submit', (e) => { e.preventDefault(); const t = $('q').value; $('q').value = ''; ask(t); });
 document.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.ask)));
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && busy) ctl?.abort(); });
 
-render();
-if (window.claude?.use) boot(); else { S.ok.accountsErr = S.ok.pipelineErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.'; render(); }
+buildSystem(); render(); renderMail();
+if (window.claude?.use) boot(); else { S.ok.accountsErr = S.ok.engagedErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.'; M.state = 'needs-desktop'; render(); renderMail(); }
 }
 </script>
