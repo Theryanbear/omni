@@ -379,6 +379,18 @@ def ab_report(conn, campaign: str, min_sent: int = 30) -> dict:
         rows.append({"step": v["step_number"], "label": v["label"], "active": bool(v["active"]), "subject": v["subject"],
                      "leads": leads, "sent": sent, "replied": replied, "bounced": bounced,
                      "reply_rate": round(replied / sent, 4) if sent else 0.0})
+    if not rows:  # copy written per lead (e.g. by Cowork) carries its own variant label
+        for lab in [r["variant"] for r in conn.execute(
+                "SELECT DISTINCT variant FROM enrollments WHERE campaign_id=? AND variant!='' ORDER BY variant", (c["id"],))]:
+            sent = conn.execute("SELECT COUNT(*) FROM messages WHERE campaign_id=? AND direction='out' AND kind='sequence' "
+                                "AND step_number=1 AND variant=?", (c["id"], lab)).fetchone()[0]
+            leads = conn.execute("SELECT COUNT(*) FROM enrollments WHERE campaign_id=? AND variant=?", (c["id"], lab)).fetchone()[0]
+            replied = conn.execute("SELECT COUNT(DISTINCT m.lead_id) FROM messages m JOIN enrollments e ON e.lead_id=m.lead_id "
+                                   "AND e.campaign_id=? WHERE m.direction='in' AND m.kind='reply' AND e.variant=?",
+                                   (c["id"], lab)).fetchone()[0]
+            rows.append({"step": 1, "label": lab, "active": True, "subject": "(written per lead)", "leads": leads,
+                         "sent": sent, "replied": replied, "bounced": 0,
+                         "reply_rate": round(replied / sent, 4) if sent else 0.0, "per_lead": True})
     verdict, leader = "no A/B test running", None
     firsts = [r for r in rows if r["step"] == 1 and r["active"]]
     if len(firsts) >= 2:
@@ -437,8 +449,12 @@ def enroll(conn, campaign: str, emails: list[str] | None = None, tag: str = "", 
         if engine.is_suppressed(conn, lead["email"]) or lead["status"] in engine.STOP_LEAD_STATUSES:
             skipped.append(f"{lead['email']} ({lead['status']})")
             continue
-        cur = conn.execute("INSERT OR IGNORE INTO enrollments (campaign_id, lead_id, next_send_at, created_at) "
-                           "VALUES (?,?,?,?)", (c["id"], lead["id"], now, now))
+        try:
+            label = str(json.loads(lead["custom"] or "{}").get("variant", ""))[:40]
+        except json.JSONDecodeError:
+            label = ""
+        cur = conn.execute("INSERT OR IGNORE INTO enrollments (campaign_id, lead_id, next_send_at, created_at, variant) "
+                           "VALUES (?,?,?,?,?)", (c["id"], lead["id"], now, now, label))
         if cur.rowcount:
             added += 1
         else:
@@ -636,6 +652,8 @@ def auto_optimize(conn, min_sent: int = 30) -> list[dict]:
     for c in conn.execute("SELECT * FROM campaigns WHERE status='active'").fetchall():
         rep = ab_report(conn, c["name"], min_sent)
         firsts = [v for v in rep["variants"] if v["step"] == 1 and v["active"]]
+        if any(v.get("per_lead") for v in firsts):
+            continue  # labels come from the writer (Cowork); report only, it picks the next test
         if rep["leader"] and "confident" in rep["verdict"] and len(firsts) > 1:
             losers = [v["label"] for v in firsts if v["label"] != rep["leader"]]
             for label in losers:
@@ -660,3 +678,33 @@ def decisions(conn, unreported_only: bool = False, mark_reported: bool = False, 
     if mark_reported and rows:
         conn.execute(f"UPDATE decisions SET reported=1 WHERE id IN ({','.join('?' * len(rows))})", [r["id"] for r in rows])
     return rows
+
+
+HANDOFF_STEPS = [
+    {"subject": "{{subject_1}}", "body": "{{body_1}}", "delay_days": 0},
+    {"subject": "", "body": "{{body_2}}", "delay_days": 2},
+    {"subject": "", "body": "{{body_3}}", "delay_days": 5},
+    {"subject": "", "body": "{{body_4}}", "delay_days": 7},
+]
+
+
+def ensure_handoff_campaign(conn, name: str = "Cowork outreach") -> dict:
+    """The campaign Cowork's written emails flow into: each lead carries its own four touches
+    (subject_1, body_1..body_4) as merge fields, so the engine only distributes and follows up."""
+    if not conn.execute("SELECT 1 FROM campaigns WHERE name=?", (name,)).fetchone():
+        create_campaign(conn, name, daily_limit=400)
+        set_sequence(conn, name, HANDOFF_STEPS)
+    return campaign_detail(conn, name)
+
+
+def handoff(conn, leads: list[dict], campaign: str = "Cowork outreach") -> dict:
+    """Import leads that Cowork researched and wrote for, and enroll them. Each lead needs email,
+    subject_1 and body_1..body_4; optional variant (A/B label), first_name, company, hook, notion_url."""
+    ensure_handoff_campaign(conn, campaign)
+    ok, bad = [], []
+    for ld in leads:
+        missing = [k for k in ("email", "subject_1", "body_1", "body_2", "body_3", "body_4") if not str(ld.get(k, "")).strip()]
+        (bad.append({"email": ld.get("email"), "missing": missing}) if missing else ok.append(ld))
+    up = upsert_leads(conn, ok, tags="cowork") if ok else {"added": 0, "updated": 0}
+    en = enroll(conn, campaign, emails=[x["email"] for x in ok]) if ok else {"enrolled": 0, "skipped": 0}
+    return {"imported": up, "enrolled": en, "rejected": bad}

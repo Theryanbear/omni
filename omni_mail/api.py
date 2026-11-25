@@ -70,6 +70,8 @@ OPS = {
     "suppression": lambda c, limit=100: service.list_suppression(c, limit),
     "auto_optimize": lambda c, min_sent=30: service.auto_optimize(c, min_sent),
     "decisions": lambda c, unreported_only=False, mark_reported=False, limit=50: service.decisions(c, unreported_only, mark_reported, limit),
+    "ensure_handoff_campaign": lambda c, name="Cowork outreach": service.ensure_handoff_campaign(c, name),
+    "handoff": lambda c, leads, campaign="Cowork outreach": service.handoff(c, leads, campaign),
     "tick_preview": lambda c: engine.send_tick(c, FakeTransport(), dry_run=True),
     "sync": lambda c: engine.sync_inbox(c, _transport()),
 }

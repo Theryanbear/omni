@@ -89,3 +89,28 @@ def test_auto_optimize_retires_loser(conn):
     d = service.decisions(conn, unreported_only=True, mark_reported=True)
     assert len(d) == 1 and d[0]["data"]["retired"] == ["A"]
     assert service.decisions(conn, unreported_only=True) == []
+
+
+def test_cowork_handoff_per_lead_copy_and_variants(conn):
+    service.update_setting(conn, "physical_address", "1 Test St")
+    leads = [{"email": f"h{i}@fleet.test", "first_name": "Sam", "company": f"Fleet {i}", "variant": "A" if i % 2 else "B1",
+              "subject_1": f"quick one about your trucks {i}", "body_1": f"Body one for {i}", "body_2": "Two",
+              "body_3": "Three", "body_4": "Four"} for i in range(4)]
+    leads.append({"email": "broken@fleet.test", "subject_1": "x"})
+    out = service.handoff(conn, leads)
+    assert out["enrolled"]["enrolled"] == 4 and out["rejected"][0]["email"] == "broken@fleet.test"
+    service.set_status(conn, "Cowork outreach", "active")
+    t = FakeTransport()
+    for i in range(6):
+        engine.send_tick(conn, t, now=TUE_10AM + timedelta(minutes=10 * i), rng=random.Random(i))
+    sent = [m for _, m in t.sent if "fleet.test" in m["To"]]
+    assert len(sent) == 4 and all(m["Subject"].startswith("quick one about your trucks") for m in sent)
+    assert any("Body one for 1" in m.get_content() for m in sent)
+    rep = service.ab_report(conn, "Cowork outreach", min_sent=1)
+    assert sorted(v["label"] for v in rep["variants"]) == ["A", "B1"] and all(v["sent"] == 2 for v in rep["variants"])
+    assert service.auto_optimize(conn) == []
+    # follow-up two days later uses the lead's own body_2, threaded
+    for i in range(6):
+        engine.send_tick(conn, t, now=TUE_10AM + timedelta(days=2, minutes=10 * i + 1), rng=random.Random(i))
+    f = [m for _, m in t.sent[len(t.sent) - 4:] if "fleet.test" in m["To"]]
+    assert f and all(m.get_content().startswith("Two") and m["Subject"].startswith("Re: ") for m in f)

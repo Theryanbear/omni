@@ -91,7 +91,7 @@ def test_full_sequence_threads_and_respects_gaps(conn):
     jane_first = next(m for k, m in first.items() if "jane@apt.test" in k)
     assert jane_first["Subject"] in ("Quick question, Jane", "Fast question, Jane")
     body = jane_first.get_content()
-    assert "Apt Co has 240 units" in body and "123 Main St" in body and "unsubscribe" in body.lower()
+    assert "Apt Co has 240 units" in body and "123 Main St" in body and "hear from me" in body and "--" not in body
     assert "List-Unsubscribe" in jane_first
 
     # follow-up not due yet

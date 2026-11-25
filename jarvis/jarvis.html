@@ -5,8 +5,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* VOICE occasion-grade work tool: a heads up display that runs a business, calm until something needs Ryan
-   IDEA Tony Stark's HUD: a sun (the arc reactor: money) with planets for every part of the business
-   PICTURE the solar system: tilted orbits, planets with progress rings and moons, zoom into the reactor
+   IDEA Tony Stark's HUD: the arc reactor (money) with crystal core fragments for every part of the business
+   PICTURE the core with six glowing crystal fragments in a ring, energy streaming out to each; zoom into the reactor
    COLOUR night #02060d, holo cyan #3fe0ff, amber #ffb547 money and action, red #ff5468 stale and deadlines, green wins
    TYPE Oxanium (display, numerals) + Rajdhani (text)
    LAYOUT laptop: top bar, flickable screens left, Jarvis comms rail right; phone: bar, screen, comms stacked */
@@ -58,24 +58,31 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
 .detail{opacity:0;transform:scale(.35);pointer-events:none}
 .corewrap.zin .sys{opacity:0;transform:scale(2.4);pointer-events:none}
 .corewrap.zin .detail{opacity:1;transform:none;pointer-events:auto}
-.sys{perspective:1100px;overflow:hidden}
-.plane{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(64deg)}
-.ring{position:absolute;left:0;top:0;border:1px solid rgba(63,224,255,.22);border-radius:50%;transform:translate(-50%,-50%)}
-.ring.dash{border-style:dashed;border-color:rgba(63,224,255,.12)}
-.ow{position:absolute;left:0;top:0;width:0;height:0;transform-style:preserve-3d;animation:rot var(--t) linear infinite;animation-delay:var(--dl)}
-.arm{position:absolute;left:0;top:0;transform-style:preserve-3d}
-.pl{transform-style:preserve-3d;animation:rotr var(--t) linear infinite;animation-delay:var(--dl)}
-.up{transform:rotateX(-64deg);transform-style:preserve-3d}
-.planet{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;color:var(--ink);cursor:pointer;padding:4px;font:inherit}
-.planet .orb{position:relative;width:var(--ps,64px);height:var(--ps,64px);border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--pc2),var(--pc) 55%,#020a12 100%);box-shadow:0 0 22px color-mix(in srgb,var(--pc) 55%,transparent),inset -6px -8px 14px rgba(0,0,0,.55);transition:transform .25s}
-.planet:hover .orb,.planet:focus-visible .orb{transform:scale(1.15)}
-.planet .orb svg{position:absolute;inset:-8px;width:calc(100% + 16px);height:calc(100% + 16px)}
-.planet .orb b{position:absolute;inset:0;display:grid;place-items:center;font:600 15px Oxanium,sans-serif;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.8)}
-.planet .lab{font:600 11px Oxanium,sans-serif;letter-spacing:.2em;color:var(--cy);white-space:nowrap;text-shadow:0 0 8px #000}
-.planet .met{font:500 13px Rajdhani,sans-serif;color:var(--ink);white-space:nowrap;background:rgba(2,6,13,.6);padding:0 6px;border-radius:4px}
-.moons{position:absolute;inset:-14px;animation:rot 9s linear infinite;pointer-events:none}
-.moons i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--pc2);box-shadow:0 0 6px var(--pc2);left:50%;top:0;transform-origin:3px calc(var(--ps,64px)/2 + 14px)}
-.sun{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(140px,22vh,190px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle,rgba(63,224,255,.35),rgba(8,40,60,.4) 55%,transparent 72%);cursor:zoom-in;color:var(--ink);padding:0;z-index:2}
+.sys{overflow:hidden}
+.beams{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.bflow{stroke-dasharray:3 16;animation:flow 1.4s linear infinite}
+.bflow.slow{stroke-dasharray:1 26;animation-duration:2.6s}
+@keyframes flow{to{stroke-dashoffset:-38}}
+.bglow{animation:hum 3.4s ease-in-out infinite}
+@keyframes hum{50%{stroke-opacity:.05}}
+.frag{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;color:var(--ink);cursor:pointer;padding:0;font:inherit;z-index:2}
+.crystal{position:relative;width:var(--fs,76px);height:var(--fs,76px);transition:transform .3s}
+.frag:hover .crystal,.frag:focus-visible .crystal{transform:scale(1.12)}
+.aura{position:absolute;inset:-46%;border-radius:50%;background:radial-gradient(circle,rgba(63,224,255,.5),rgba(63,224,255,.14) 42%,transparent 68%);animation:breathe 3.4s ease-in-out infinite;animation-delay:var(--dl,0s);pointer-events:none}
+@keyframes breathe{50%{transform:scale(1.2);opacity:.5}}
+.rays{position:absolute;inset:-62%;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(170,245,255,.5) 0 1.5deg,transparent 1.5deg 13deg);-webkit-mask:radial-gradient(circle,transparent 27%,#000 33%,rgba(0,0,0,.4) 50%,transparent 70%);mask:radial-gradient(circle,transparent 27%,#000 33%,rgba(0,0,0,.4) 50%,transparent 70%);animation:rot 26s linear infinite;pointer-events:none;opacity:.75}
+.rays.r2{background:repeating-conic-gradient(from 6deg,rgba(120,230,255,.45) 0 .8deg,transparent .8deg 8deg);animation-duration:41s;animation-direction:reverse;opacity:.45}
+.glass{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 33% 28%,#fff 0,#c9f9ff 7%,#5fe6ff 26%,#118bb8 58%,#032a40 100%);box-shadow:0 0 16px #3fe0ff,0 0 44px rgba(63,224,255,.55),inset -9px -11px 18px rgba(0,18,36,.75),inset 4px 5px 10px rgba(255,255,255,.4);overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;border-radius:50%;background:linear-gradient(118deg,transparent 38%,rgba(255,255,255,.22) 40%,transparent 43%),linear-gradient(32deg,transparent 55%,rgba(255,255,255,.16) 57%,transparent 60%),linear-gradient(200deg,transparent 46%,rgba(200,250,255,.18) 48%,transparent 51%)}
+.swirl{position:absolute;inset:8%;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 20%,rgba(255,255,255,.3) 28%,transparent 38% 60%,rgba(160,240,255,.28) 70%,transparent 80%);animation:rot 7s linear infinite}
+.crystal svg{position:absolute;inset:-12px;width:calc(100% + 24px);height:calc(100% + 24px);overflow:visible}
+.crystal b{position:absolute;inset:0;display:grid;place-items:center;font:600 16px Oxanium,sans-serif;color:#fff;text-shadow:0 0 6px #003a55,0 0 2px #003a55}
+.spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#e8fdff;box-shadow:0 0 8px #3fe0ff,0 0 3px #fff;animation:twinkle 2.6s ease-in-out infinite;pointer-events:none}
+@keyframes twinkle{0%,100%{opacity:0;transform:scale(.4)}45%{opacity:1;transform:scale(1)}}
+.frag .lab{font:600 11px Oxanium,sans-serif;letter-spacing:.2em;color:var(--cy);white-space:nowrap;text-shadow:0 0 8px #000}
+.frag .met{font:500 13px Rajdhani,sans-serif;color:var(--ink);white-space:nowrap;background:rgba(2,6,13,.6);padding:0 6px;border-radius:4px;margin-top:-4px}
+.sun{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(150px,24vh,200px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle,rgba(63,224,255,.4),rgba(8,40,60,.45) 55%,transparent 72%);cursor:zoom-in;color:var(--ink);padding:0;z-index:3}
+.sun .aura{inset:-30%}.sun .rays{inset:-48%;opacity:.9}
 .sun svg{position:absolute;inset:0;width:100%;height:100%}
 .sun .sc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .sun small{font:500 9px Oxanium,sans-serif;letter-spacing:.24em;color:var(--mute)}
@@ -201,8 +208,8 @@ label.f{display:grid;gap:4px;font-size:13px;color:var(--mute)}
 details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;letter-spacing:.12em;margin:4px 0}
 @media(max-width:1180px){.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid3>.stack:last-child{grid-column:1/-1}}
 @media(max-width:980px){body{overflow:auto}.app{height:auto;min-height:100%}.main{grid-template-columns:minmax(0,1fr)}.stage{height:84vh;min-height:580px}.comms{border-left:0;border-top:1px solid var(--line);height:auto;min-height:380px}.log{max-height:50vh}.core{grid-template-columns:minmax(0,1fr)}.reactor{max-width:400px}.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.grid3>.stack:last-child{grid-column:auto}.syshud .panel:nth-child(n+2){display:none}}
-@media(max-width:600px){.sun{width:92px}.sun small,.sun span{display:none}.zoomhint{display:none}.planet .lab{font-size:9px;letter-spacing:.1em}.chips .chip:nth-child(n+3){display:none}.clock{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 8px;letter-spacing:.04em}.planet .met{display:none}}
-@media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on,.ow,.pl,.moons{animation:none!important}.screen,.arc,.tr i,.sys,.detail{transition:none!important}}
+@media(max-width:600px){.sun{width:96px}.sun small,.sun span{display:none}.zoomhint{display:none}.frag .lab{font-size:9px;letter-spacing:.08em}.frag .met{display:none}.chips .chip:nth-child(n+3){display:none}.clock{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 8px;letter-spacing:.04em}}
+@media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on,.aura,.rays,.swirl,.spark,.bflow,.bglow{animation:none!important}.screen,.arc,.tr i,.sys,.detail{transition:none!important}}
 </style>
 
 <div class="app">
@@ -226,8 +233,8 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
       <section class="screen" aria-label="System" style="padding-bottom:56px">
         <div class="corewrap" id="corewrap">
           <div class="sys" id="sys">
-            <div class="plane" id="plane"></div>
-            <button class="sun" id="sun" aria-label="Zoom into the core">
+            <svg class="beams" id="beams" aria-hidden="true"></svg><div id="frags"></div>
+            <button class="sun" id="sun" aria-label="Zoom into the core"><span class="aura"></span><span class="rays"></span><span class="rays r2"></span>
               <svg viewBox="0 0 200 200" aria-hidden="true">
                 <circle cx="100" cy="100" r="92" fill="none" stroke="#3fe0ff" stroke-opacity=".25" stroke-width="1" stroke-dasharray="2 5" class="spin" style="--d:50s"/>
                 <circle cx="100" cy="100" r="80" fill="none" stroke="#3fe0ff" stroke-opacity=".12" stroke-width="8"/>
@@ -240,7 +247,7 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
               <div class="panel"><span>Today's focus</span><b id="hud-focus" style="font-size:16px;font-family:Rajdhani;font-weight:600">Loading…</b></div>
               <div class="panel" style="text-align:right"><span>Days to Dec 31</span><b id="hud-days">--</b></div>
             </div>
-            <div class="zoomhint">CLICK A PLANET · CLICK THE SUN TO ZOOM IN · PINCH TO ZOOM</div>
+            <div class="zoomhint">CLICK A CORE FRAGMENT · CLICK THE CORE TO ZOOM IN · PINCH TO ZOOM</div>
           </div>
           <div class="detail" id="detail">
             <button class="btn back" id="zoomout">◎ System view</button>
@@ -404,7 +411,8 @@ const NS = 'http://www.w3.org/2000/svg';
 const VIEW = {
   accounts: 'view://42342d38-36ae-814b-8cab-000c5b2e48cf', engaged: 'view://42342d38-36ae-8134-819c-000cf7ef5504',
   callq: 'view://42342d38-36ae-81e3-8363-000cc4a19817', cold: 'view://42342d38-36ae-81eb-be70-000c7584a99a',
-  jarvis: 'view://42342d38-36ae-8119-9702-000c7c2588a7', calls: 'view://42342d38-36ae-8164-84f4-000ce2abbda1'
+  jarvis: 'view://42342d38-36ae-8119-9702-000c7c2588a7', calls: 'view://42342d38-36ae-8164-84f4-000ce2abbda1',
+  queue: 'view://42342d38-36ae-818e-9639-000c02a56f83'
 };
 const DSID = { jarvis: '42342d38-36ae-81f5-92b6-000bb09ab79f', calls: '42342d38-36ae-81f8-aa47-000bfb4cb11b', tracker: 'b4e18a0e-4552-4104-99b9-0d53d52549a3' };
 const STAGES = [['Proposal Sent', 'PROPOSAL'], ['Meeting Set', 'MEETING'], ['Replied: Interested', 'INTERESTED'], ['Existing (Hot) - manual', 'HOT'], ['Not Now', 'NOT NOW']];
@@ -428,7 +436,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const digits = (p) => String(p || '').replace(/[^\d+]/g, '');
 
-const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], agents: [], ok: {}, mail: { state: 'checking' } };
+const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], queue: [], agents: [], ok: {}, mail: { state: 'checking' } };
 let mcp = null, sample = null, tts = null, dict = null, desktop = null;
 
 /* ---------- clock ---------- */
@@ -507,33 +515,48 @@ function callStats() {
   return { dials: todays.length, talked: count('Talked') + count('Meeting set'), meetings: count('Meeting set'), streak, week, goal: goalDials() };
 }
 
-/* ---------- system view ---------- */
+/* ---------- system view: core fragments ---------- */
 const PLANETS = [
-  { key: 'pipeline', label: 'PIPELINE', screen: 1, c: '#1f8fbf', c2: '#7fe6ff', ring: 0, phase: 0 },
-  { key: 'dial', label: 'SMILE & DIAL', screen: 2, c: '#c7781c', c2: '#ffd08a', ring: 0, phase: .5 },
-  { key: 'outreach', label: 'OUTREACH', screen: 3, c: '#2a7a8f', c2: '#8af5ff', ring: 1, phase: .2 },
-  { key: 'money', label: 'MONEY', screen: 4, c: '#1d8a5c', c2: '#8affc9', ring: 1, phase: .7 },
-  { key: 'agents', label: 'AGENTS', screen: 5, c: '#5a3fbf', c2: '#c3b3ff', ring: 2, phase: .35 },
-  { key: 'mac', label: 'MAC', screen: 6, c: '#5b6b78', c2: '#d6e6f0', ring: 2, phase: .85 }
+  { key: 'pipeline', label: 'PIPELINE', screen: 1 }, { key: 'dial', label: 'SMILE & DIAL', screen: 2 },
+  { key: 'outreach', label: 'OUTREACH', screen: 3 }, { key: 'money', label: 'MONEY', screen: 4 },
+  { key: 'agents', label: 'AGENTS', screen: 5 }, { key: 'mac', label: 'MAC', screen: 6 }
 ];
-const PERIOD = [70, 105, 150];
+const FR = {};
 function buildSystem() {
-  const plane = $('plane'); plane.replaceChildren();
-  const box = $('sys'); const W = box.clientWidth || 800, H = box.clientHeight || 600;
-  const small = W < 600;
-  const base = Math.min(W / 2 - (small ? 26 : 50), (H / 2 - 60) / Math.cos(64 * Math.PI / 180) * .92);
-  const radii = small ? [base * .5, base * .76, base * 1] : [base * .45, base * .72, base * .98];
-  radii.forEach((r, i) => { const d = el('div', 'ring' + (i === 1 ? ' dash' : '')); d.style.width = d.style.height = 2 * r + 'px'; plane.append(d); });
-  PLANETS.forEach((p) => {
-    const T = PERIOD[p.ring];
-    const ow = el('div', 'ow'); ow.style.setProperty('--t', T + 's'); ow.style.setProperty('--dl', (-p.phase * T) + 's');
-    const arm = el('div', 'arm'); arm.style.transform = `translateX(${radii[p.ring]}px)`;
-    const pl = el('div', 'pl'); pl.style.setProperty('--t', T + 's'); pl.style.setProperty('--dl', (-p.phase * T) + 's');
-    const up = el('div', 'up');
-    const b = el('button', 'planet'); b.type = 'button'; b.id = 'pl-' + p.key; b.style.setProperty('--pc', p.c); b.style.setProperty('--pc2', p.c2);
-    b.style.setProperty('--ps', (W < 600 ? 46 : 60) + 'px');
-    b.onclick = () => go(p.screen);
-    up.append(b); pl.append(up); arm.append(pl); ow.append(arm); plane.append(ow);
+  const box = $('sys'), W = box.clientWidth || 800, H = box.clientHeight || 600, small = W < 600;
+  const cx = W / 2, cy = H / 2, sunR = (small ? 48 : Math.min(100, Math.max(75, H * .12))), fs = small ? 52 : 76;
+  const rx = Math.min(W / 2 - (small ? 58 : 90), Math.max(sunR + 110, W * .34)), ry = Math.min(H / 2 - (small ? 70 : 95), rx * .78);
+  const svg = $('beams'); svg.replaceChildren(); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const defs = sv('defs', {}); svg.append(defs);
+  const fr = $('frags'); fr.replaceChildren();
+  PLANETS.forEach((p, i) => {
+    const ang = -Math.PI / 2 + i * 2 * Math.PI / PLANETS.length + Math.PI / PLANETS.length;
+    const x = cx + rx * Math.cos(ang), y = cy + ry * Math.sin(ang);
+    const sx = cx + sunR * .92 * Math.cos(ang), sy = cy + sunR * .92 * Math.sin(ang);
+    const len = Math.hypot(x - sx, y - sy), ux = (x - sx) / len, uy = (y - sy) / len;
+    const ex = x - ux * fs * .55, ey = y - uy * fs * .55;
+    const bend = (i % 2 ? 1 : -1) * len * .12, mx = (sx + ex) / 2 - uy * bend, my = (sy + ey) / 2 + ux * bend;
+    const d = `M${sx.toFixed(1)},${sy.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
+    const g = sv('linearGradient', { id: 'bg' + i, gradientUnits: 'userSpaceOnUse', x1: sx, y1: sy, x2: ex, y2: ey });
+    g.append(sv('stop', { offset: '0', 'stop-color': '#ffffff', 'stop-opacity': '.95' }), sv('stop', { offset: '.5', 'stop-color': '#3fe0ff', 'stop-opacity': '.6' }), sv('stop', { offset: '1', 'stop-color': '#3fe0ff', 'stop-opacity': '.25' }));
+    defs.append(g);
+    svg.append(sv('path', { d, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .14, 'stroke-width': 12, 'stroke-linecap': 'round', class: 'bglow', style: `animation-delay:${-i * .6}s` }));
+    svg.append(sv('path', { d, fill: 'none', stroke: `url(#bg${i})`, 'stroke-width': 1.6 }));
+    svg.append(sv('path', { d, fill: 'none', stroke: '#e6fdff', 'stroke-width': 2.2, 'stroke-linecap': 'round', class: 'bflow', style: `animation-delay:${-i * .23}s` }));
+    svg.append(sv('path', { d, fill: 'none', stroke: '#9ff2ff', 'stroke-width': 3.5, 'stroke-linecap': 'round', class: 'bflow slow', style: `animation-delay:${-i * .41}s`, 'stroke-opacity': .7 }));
+    if (!reduced) for (let k = 0; k < 3; k++) {
+      const c = sv('circle', { r: 2.4, fill: '#ffffff', opacity: .9 }); const am = sv('animateMotion', { dur: (1.8 + (i % 3) * .3) + 's', repeatCount: 'indefinite', begin: (-k * .65 - i * .2) + 's', path: d });
+      c.append(am); svg.append(c);
+    }
+    const b = el('button', 'frag'); b.type = 'button'; b.style.left = x + 'px'; b.style.top = y + 'px'; b.onclick = () => go(p.screen);
+    const cr = el('span', 'crystal'); cr.style.setProperty('--fs', fs + 'px'); cr.style.setProperty('--dl', (-i * .55) + 's');
+    const glass = el('span', 'glass'); glass.append(el('span', 'swirl'));
+    const ringBox = el('span'); const num = el('b');
+    cr.append(el('span', 'aura'), el('span', 'rays'), el('span', 'rays r2'), glass, ringBox, num);
+    for (let k = 0; k < 4; k++) { const sp = el('span', 'spark'); const a2 = (k / 4) * Math.PI * 2 + i; const rr = fs * (.62 + (k % 2) * .14); sp.style.left = (fs / 2 + rr * Math.cos(a2) - 2) + 'px'; sp.style.top = (fs / 2 + rr * Math.sin(a2) - 2) + 'px'; sp.style.animationDelay = (-(k * .7 + i * .3)) + 's'; cr.append(sp); }
+    const lab = el('span', 'lab', p.label), met = el('span', 'met');
+    b.append(cr, lab, met); fr.append(b);
+    FR[p.key] = { b, ringBox, num, met, fs };
   });
   renderPlanets();
 }
@@ -543,24 +566,21 @@ function planetData() {
   const sentToday = ov ? ov.mailboxes.reduce((s, x) => s + num(x.sent_today), 0) : 0, cap = ov ? ov.mailboxes.reduce((s, x) => s + num(x.limit_today), 0) : 0;
   const running = S.agents.filter((a) => /WORK|RUNNING/.test(String(a.status_bucket || a.session_status || ''))).length;
   return {
-    pipeline: { f: eg.length ? 1 - st / eg.length : 0, center: String(eg.length), met: `${eg.length} live · ${st} stale`, moons: Math.min(5, STAGES.filter(([k]) => eg.some((r) => r.Status === k)).length) },
-    dial: { f: cs.dials / cs.goal, center: String(cs.dials), met: `${cs.dials}/${cs.goal} dials`, moons: Math.min(5, cs.meetings + cs.talked) },
-    outreach: { f: cap ? sentToday / cap : 0, center: ov ? String(sentToday) : '·', met: S.mail.state === 'ready' ? `${sentToday}/${cap} sent` : 'set up', moons: ov ? Math.min(6, ov.mailboxes.length) : 0 },
-    money: { f: m.reach / GOAL, center: Math.round(m.active / 100) / 10 + 'k', met: `${fmt(m.reach)} in reach`, moons: Math.min(5, S.accounts.filter((a) => a.Status === 'Active').length) },
-    agents: { f: running ? .7 : 0, center: String(running), met: `${running} running`, moons: Math.min(5, running) },
-    mac: { f: desktop?.fs ? 1 : 0, center: desktop?.fs ? '✓' : '·', met: desktop?.fs ? 'connected' : 'install app', moons: 0 }
+    pipeline: { f: eg.length ? 1 - st / eg.length : 0, center: String(eg.length), met: `${eg.length} live · ${st} stale` },
+    dial: { f: cs.dials / cs.goal, center: String(cs.dials), met: `${cs.dials}/${cs.goal} dials` },
+    outreach: { f: cap ? sentToday / cap : 0, center: ov ? String(sentToday) : '·', met: S.mail.state === 'ready' ? `${sentToday}/${cap} sent` : 'set up' },
+    money: { f: m.reach / GOAL, center: Math.round(m.active / 100) / 10 + 'k', met: `${fmt(m.reach)} in reach` },
+    agents: { f: running ? .7 : 0, center: String(running), met: `${running} running` },
+    mac: { f: desktop?.fs ? 1 : 0, center: desktop?.fs ? '✓' : '·', met: desktop?.fs ? 'connected' : 'install app' }
   };
 }
 function renderPlanets() {
   const d = planetData();
   PLANETS.forEach((p) => {
-    const b = $('pl-' + p.key); if (!b) return; const x = d[p.key];
-    b.replaceChildren();
-    const orb = el('span', 'orb');
-    orb.append(ring(80, x.f, p.c2, { w: 3, speed: 12, label: `${p.label}: ${x.met}` }), el('b', null, x.center));
-    if (x.moons) { const mo = el('span', 'moons'); for (let i = 0; i < x.moons; i++) { const m = el('i'); m.style.transform = `rotate(${i * 360 / x.moons}deg)`; mo.append(m); } orb.append(mo); }
-    b.append(orb, el('span', 'lab', p.label), el('span', 'met', x.met));
-    b.setAttribute('aria-label', `${p.label}, ${x.met}. Open.`);
+    const f = FR[p.key]; if (!f) return; const x = d[p.key];
+    const key = `${x.f.toFixed(3)}|${x.center}`;
+    if (f.ringBox.dataset.k !== key) { f.ringBox.dataset.k = key; f.ringBox.replaceChildren(ring(f.fs + 24, x.f, '#bff6ff', { w: 2.5, speed: 16, label: `${p.label}: ${x.met}` })); }
+    f.num.textContent = x.center; f.met.textContent = x.met; f.b.setAttribute('aria-label', `${p.label}, ${x.met}. Open.`);
   });
   const m = money();
   countUp($('sun-mrr'), m.active);
@@ -682,7 +702,7 @@ const logBox = $('log');
 let turns = store.get('jarvis.turns', []);
 function addMsg(who, text) { const m = el('div', 'msg ' + (who === 'sys' ? 'sm' : who)); if (who !== 'sys') m.append(el('small', null, who === 'j' ? 'JARVIS' : 'YOU')); const body = el('span', null, text); m.append(body); logBox.append(m); logBox.scrollTop = logBox.scrollHeight; return body; }
 turns.slice(-8).forEach((t) => addMsg(t.role === 'user' ? 'u' : 'j', t.content));
-if (!turns.length) addMsg('j', 'Good to see you. All systems coming online. Click a planet, or say "brief me".');
+if (!turns.length) addMsg('j', 'Good to see you. All systems coming online. Click a core fragment, or say "brief me".');
 function approval(title, detail, okLabel) {
   return new Promise((resolve) => {
     const c = el('div', 'card'); c.append(el('b', null, title), el('code', null, detail));
@@ -700,7 +720,7 @@ function watchView(key, view, every, size = 100) {
   mcp.watchTool('Notion', 'notion-query-data-sources', { data: { mode: 'view', view_url: view, page_size: size } }, (ev) => {
     if (ev.type === 'data') { const p = payload(ev.result); S[key] = (p && p.results) || []; S.ok[key] = true; S.ok[key + 'Err'] = null; }
     else { if (!['server_unavailable', 'upstream_error', 'rate_limited'].includes(ev.error.code)) { S[key] = []; S.ok[key] = false; } S.ok[key + 'Err'] = errCopy(ev.error, 'Notion'); }
-    render(); if (key === 'jarvis') notifyNew();
+    render(); if (key === 'jarvis') notifyNew(); if (key === 'queue') syncQueue();
   }, { refetchInterval: every });
 }
 const refreshNotion = () => mcp?.invalidate('Notion', 'notion-query-data-sources').catch(() => {});
@@ -709,7 +729,7 @@ async function boot() {
   [mcp, sample, tts, dict, desktop] = await Promise.all(['mcp', 'sample', 'tts', 'dictation', 'desktop'].map((n) => window.claude.use(n).catch(() => null)));
   if (mcp) {
     watchView('accounts', VIEW.accounts, 300000); watchView('engaged', VIEW.engaged, 300000); watchView('jarvis', VIEW.jarvis, 120000, 60);
-    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000);
+    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000); watchView('queue', VIEW.queue, 300000);
     mcp.watchTool('Claude Code Remote', 'list_sessions', { limit: 8, mine: true }, (ev) => {
       if (ev.type === 'data') { const p = payload(ev.result); S.agents = (p && (p.ccr?.data || p.data || p.sessions)) || []; S.ok.agents = true; setChip('c-agents', 'ok'); }
       else { S.ok.agentsErr = errCopy(ev.error, 'Claude Code Remote'); setChip('c-agents', 'warn'); }
@@ -869,11 +889,12 @@ async function mailRefresh() {
     const ev = await mailApi('inbox_events', { since, limit: 30 });
     M.events = ev.concat(M.events || []).slice(0, 30);
     if (ev.length) { store.set('jarvis.mailSince', ev[0].sent_at); reportReplies(ev.filter((x) => x.kind === 'reply')); }
+    M.lane = (M.overview.campaigns || []).find((c) => c.name === 'Cowork outreach') || null;
     const dec = await mailApi('decisions', { unreported_only: true, mark_reported: true });
     if (dec.length) reportDecisions(dec);
     M.err = null;
   } catch (e) { M.err = String(e.message || e); }
-  M.busy = false; renderMail(); renderPlanets(); renderConns();
+  M.busy = false; renderMail(); renderPlanets(); renderConns(); syncQueue();
   setChip('c-mail', M.err ? 'bad' : M.worker?.running ? 'ok' : 'warn');
 }
 async function reportReplies(list) {
@@ -889,6 +910,43 @@ async function reportDecisions(list) {
   if (!mcp) return;
   try { await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.jarvis }, pages: list.map((d) => ({ properties: { Entry: `A/B: ${d.summary}`.slice(0, 200), 'date:Date:start': isoDay(), Run: 'Ad hoc', Type: 'Decision', Status: 'Done', Detail: JSON.stringify((d.data.report || {}).variants || []).slice(0, 1800) } })) }); refreshNotion(); } catch {}
 }
+/* Cowork -> engine handoff: Cowork researches and writes, queues rows in Notion, the engine sends. */
+function parseCopy(raw) { for (const t of [raw, un(raw)]) { try { const j = JSON.parse(t); if (j && typeof j === 'object') return j; } catch {} } return null; }
+async function syncQueue() {
+  if (M.state !== 'ready' || M.syncing || !S.queue.length || !mcp) return;
+  M.syncing = true;
+  const leads = [], rowsByEmail = {}, bad = [];
+  for (const r of S.queue) {
+    const c = parseCopy(r['Engine copy'] || ''); const email = String(r.Email || '').trim().toLowerCase();
+    if (!c || !email) { bad.push(un(r.Company)); continue; }
+    const first = (un(r.Contact).match(/^[A-Z][a-z]+/) || [''])[0];
+    leads.push({ email, company: un(r.Company), first_name: first, hook: un(r.Hook), variant: String(r['Subject variant'] || '').slice(0, 40), notion_url: r.url,
+      subject_1: un(c.subject_1 || ''), body_1: un(c.body_1 || ''), body_2: un(c.body_2 || ''), body_3: un(c.body_3 || ''), body_4: un(c.body_4 || '') });
+    rowsByEmail[email] = r;
+  }
+  try {
+    if (leads.length) {
+      const out = await mailApi('handoff', { leads });
+      const rejected = new Set((out.rejected || []).map((x) => String(x.email).toLowerCase()));
+      let moved = 0;
+      for (const L of leads) {
+        if (rejected.has(L.email)) { bad.push(L.company); continue; }
+        await call('Notion', 'notion-update-page', { page_id: rowsByEmail[L.email].url, command: 'update_properties', properties: { Status: 'With engine', 'Touch #': 1, 'date:Last touch:start': isoDay() } }).then(() => moved++).catch(() => {});
+      }
+      if (moved) addMsg('sys', `Handed ${moved} Cowork-written lead${moved > 1 ? 's' : ''} to the mail engine.` + (M.lane && M.lane.status !== 'active' ? ' The Cowork lane is not started yet; start it on the Outreach screen.' : ''));
+      refreshNotion(); setTimeout(mailRefresh, 500);
+    }
+    if (bad.length && !M.warnedBad) { addMsg('sys', `Couldn't hand off ${bad.length} queued row${bad.length > 1 ? 's' : ''} (missing email or Engine copy): ${bad.slice(0, 4).join(', ')}.`); M.warnedBad = true; }
+  } catch (e) { addMsg('sys', 'Handoff to the engine failed: ' + (e.message || e)); }
+  M.syncing = false;
+}
+async function startLane() {
+  const ok = await approval('START THE COWORK LANE', 'The engine will start sending the emails Cowork writes, from all active inboxes, within each inbox\'s daily limit, weekdays 8:30 to 4:30 Eastern. Flip the Playbook\'s "Sending mode" to ENGINE at the same time so Cowork stops sending from Gmail.', 'Start sending');
+  if (!ok) return;
+  try { await mailApi('ensure_handoff_campaign'); await mailApi('start', { campaign: 'Cowork outreach' }); addMsg('sys', 'Cowork lane is live.'); } catch (e) { addMsg('sys', 'Could not start: ' + (e.message || e)); }
+  mailRefresh();
+}
+
 function renderMail() {
   const b = $('eng-body'); b.replaceChildren();
   const btn = (t, cls, fn) => { const x = el('button', 'btn ' + (cls || ''), t); x.onclick = fn; return x; };
@@ -907,8 +965,9 @@ function renderMail() {
     const row = el('div', 'quick');
     if (!ov.physical_address_set) row.append(btn('Set footer address', 'am', setFooter));
     row.append(M.worker?.running ? btn('Stop sender', 'rd', () => workerCmd('uninstall-worker')) : btn('Start background sender', 'gn', () => workerCmd('install-worker')));
+    if (!M.lane || M.lane.status !== 'active') row.append(btn('Start Cowork lane', 'am', startLane));
     row.append(btn('Refresh', '', mailRefresh), btn('Update engine', '', installEngine));
-    b.append(row, msg(`${sent} sent today of ${cap} capacity across ${ov.mailboxes.length} inbox${ov.mailboxes.length === 1 ? '' : 'es'}. ${ov.unhandled_replies || 0} replies waiting.` + (M.err ? ' Last error: ' + M.err : '')));
+    b.append(row, msg(`Cowork lane: ${M.lane ? M.lane.status + ', ' + M.lane.enrolled + ' leads, ' + M.lane.sent + ' sent, ' + M.lane.replied + ' replies' : 'not created yet'}. Queue in Notion: ${S.queue.length} waiting.`), msg(`${sent} sent today of ${cap} capacity across ${ov.mailboxes.length} inbox${ov.mailboxes.length === 1 ? '' : 'es'}. ${ov.unhandled_replies || 0} replies waiting.` + (M.err ? ' Last error: ' + M.err : '')));
     const ib = $('inboxes'); ib.replaceChildren();
     if (!ov.mailboxes.length) ib.append(el('div', 'empty', 'No inboxes yet. Add one below.'));
     ov.mailboxes.forEach((x, i) => { const d = el('div', 'ibx'); d.append(ring(70, num(x.sent_today) / Math.max(1, num(x.limit_today)), x.active ? '#3fe0ff' : '#6fa3b6', { text: String(x.sent_today), speed: 10 + i * 2, label: x.email }), el('b', null, x.email), el('span', null, `limit ${x.limit_today}/day`)); ib.append(d); });
@@ -1027,7 +1086,7 @@ function snapshot() {
 const consoleBox = $('console');
 const conLine = (t, cls) => { consoleBox.append(el('span', cls, t + '\n')); consoleBox.scrollTop = consoleBox.scrollHeight; };
 let envId = null;
-const MAIL_READ = ['overview', 'mailboxes', 'campaigns', 'campaign', 'ab_report', 'replies', 'inbox_events', 'outbox', 'thread', 'preview', 'validate', 'list_leads', 'decisions', 'settings', 'tick_preview', 'suppression'];
+const MAIL_READ = ['ensure_handoff_campaign', 'overview', 'mailboxes', 'campaigns', 'campaign', 'ab_report', 'replies', 'inbox_events', 'outbox', 'thread', 'preview', 'validate', 'list_leads', 'decisions', 'settings', 'tick_preview', 'suppression'];
 const MAIL_WRITE = ['create_campaign', 'update_campaign', 'set_sequence', 'add_variant', 'retire_variant', 'upsert_leads', 'update_lead', 'suppress', 'pause', 'unenroll', 'mark_handled', 'sync'];
 const MAIL_OK = ['start', 'send_reply', 'enroll'];
 const TOOLS = [

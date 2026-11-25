@@ -148,8 +148,8 @@ DEFAULT_SETTINGS = {
     "physical_address": "",  # required by CAN-SPAM before anything sends
     "unsubscribe_base_url": "",  # e.g. https://mail.example.com  (optional one-click link)
     "footer_template": (
-        "\n\n{signature}\n\n--\n{business_lines}\n"
-        "Not interested? Just reply \"unsubscribe\" and I won't email you again.{unsubscribe_line}"
+        "\n\n{signature}\n\n{business_lines}\n"
+        "Not the right person or rather not hear from me? Just reply and I'll stop.{unsubscribe_line}"
     ),
     "unsubscribe_keywords": "unsubscribe,remove me,take me off,stop emailing,opt out,opt-out",
 }
