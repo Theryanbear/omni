@@ -1314,11 +1314,28 @@ async function ask(text) {
   turns.push({ role: 'user', content: text }); turns = turns.slice(-16); while (turns.length && turns[0].role !== 'user') turns.shift();
   const out = addMsg('j', '…'); setState('think', 'PROCESSING'); ctl = new AbortController();
   const lim = await sample.limits().catch(() => null);
+  let snap = '{}'; try { snap = snapshot(); } catch (err) { snap = JSON.stringify({ note: 'live data unavailable: ' + (err.message || err) }); }
+  const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (just now):\n' + snap + '\n\nThe conversation with Ryan follows.' }, ...turns];
+  const onText = ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); };
+  const run = (useTools) => sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', tools: useTools && lim?.tools ? TOOLS : undefined, onText });
+  const done = (reply) => { out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply); };
   try {
-    const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (just now):\n' + snapshot() + '\n\nThe conversation with Ryan follows.' }, ...turns];
-    const { text: reply } = await sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', effort: 'low', tools: lim?.tools ? TOOLS : undefined, onText: ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); } });
-    out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply);
-  } catch (e) { out.textContent = e.text || ({ not_granted: 'I need permission to use Claude. Allow it and ask again.', rate_limited: 'Usage limit hit. Give it a minute.', cancelled: '(stopped)', refused: 'I can\'t help with that one.' }[e.code] || 'Lost the connection to Claude. Try that again.'); turns.pop(); setState(null); }
+    let res;
+    try { res = await run(true); }
+    catch (e) {
+      if (!['invalid_request', 'transform_error', 'tools_unavailable', 'upstream_error', 'prompt_too_large', 'empty_completion'].includes(e && e.code) || e.text) throw e;
+      addMsg('sys', `Tools hiccuped (${e.code}${e.message ? ': ' + String(e.message).slice(0, 160) : ''}). Answering without them…`);
+      res = await run(false);
+    }
+    done(res.text);
+  } catch (e) {
+    const code = e && e.code;
+    const friendly = { not_granted: 'I need permission to use Claude. Allow it when the app asks, then try again.', sampling_disabled: 'Claude is turned off for this account or organization.', session_expired: 'Your Claude sign in expired. Sign in again in the Claude app.', rate_limited: e && e.reason === 'usage_limit' ? 'You hit your Claude usage limit. It resets soon.' : 'Too many requests at once. Give it a minute.', cancelled: '(stopped)', refused: 'I can\'t help with that one.', capability_disabled: 'Claude isn\'t available in this window. Open Jarvis from the Claude desktop app.', not_declared: 'This version of Jarvis is missing Claude access. Reload it.' }[code];
+    out.textContent = (e && e.text) || friendly || 'Claude didn\'t answer that one.';
+    if (!friendly && code !== 'cancelled') addMsg('sys', `Details: ${code || 'error'}${e && e.message ? ': ' + String(e.message).slice(0, 240) : ''}. Try again; if it repeats, tell Claude Code this exact line.`);
+    store.set('jarvis.lastError', { at: new Date().toISOString(), code: code || null, message: String((e && e.message) || e).slice(0, 500) });
+    turns.pop(); setState(null);
+  }
   finally { busy = false; if (!document.body.classList.contains('speak')) setState(null); }
 }
 let voiceOn = store.get('jarvis.voice', true); const vb = $('voice');
