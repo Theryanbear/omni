@@ -292,18 +292,131 @@ def set_sequence(conn, campaign: str, steps: list[dict]) -> dict:
     c = get_campaign_row(conn, campaign)
     if not steps:
         raise ValueError("at least one step required")
-    if not str(steps[0].get("subject", "")).strip():
+    first_subject = steps[0].get("subject") or ((steps[0].get("variants") or [{}])[0].get("subject", ""))
+    if not str(first_subject).strip():
         raise ValueError("step 1 needs a subject")
     sent = conn.execute("SELECT MAX(current_step) FROM enrollments WHERE campaign_id=?", (c["id"],)).fetchone()[0] or 0
     if sent and len(steps) < sent:
         raise ValueError(f"leads have already received {sent} steps; keep at least that many")
     conn.execute("DELETE FROM steps WHERE campaign_id=?", (c["id"],))
     for i, s in enumerate(steps, 1):
+        variants = s.get("variants") or []
+        if variants:
+            s = {**s, "subject": s.get("subject") or variants[0].get("subject", ""), "body": s.get("body") or variants[0].get("body", "")}
+            if i == 1 and any(not str(v.get("subject", "")).strip() for v in variants):
+                raise ValueError("every step 1 variant needs a subject")
         if not str(s.get("body", "")).strip():
             raise ValueError(f"step {i} has an empty body")
-        conn.execute("INSERT INTO steps (campaign_id, step_number, delay_days, subject, body) VALUES (?,?,?,?,?)",
-                     (c["id"], i, float(s.get("delay_days", 0 if i == 1 else 3)), s.get("subject", ""), s["body"]))
+        cur = conn.execute("INSERT INTO steps (campaign_id, step_number, delay_days, subject, body) VALUES (?,?,?,?,?)",
+                           (c["id"], i, float(s.get("delay_days", 0 if i == 1 else 3)), s.get("subject", ""), s["body"]))
+        for j, v in enumerate(variants):
+            label = str(v.get("label") or chr(65 + j))
+            if not str(v.get("body", "")).strip():
+                raise ValueError(f"step {i} variant {label} has an empty body")
+            conn.execute("INSERT INTO step_variants (step_id, label, subject, body, created_at) VALUES (?,?,?,?,?)",
+                         (cur.lastrowid, label, v.get("subject", ""), v["body"], iso(utcnow())))
     return campaign_detail(conn, c["id"])
+
+
+def _step_row(conn, campaign: str, step: int):
+    c = get_campaign_row(conn, campaign)
+    st = conn.execute("SELECT * FROM steps WHERE campaign_id=? AND step_number=?", (c["id"], int(step))).fetchone()
+    if not st:
+        raise ValueError(f"campaign {campaign!r} has no step {step}")
+    return c, st
+
+
+def add_variant(conn, campaign: str, step: int, label: str, subject: str, body: str) -> dict:
+    """Add (or replace) an A/B variant on a step. New leads get split across all active variants."""
+    c, st = _step_row(conn, campaign, step)
+    if int(step) == 1 and not subject.strip():
+        raise ValueError("step 1 variants need a subject")
+    if not body.strip():
+        raise ValueError("body required")
+    conn.execute("INSERT INTO step_variants (step_id, label, subject, body, created_at) VALUES (?,?,?,?,?) "
+                 "ON CONFLICT(step_id, label) DO UPDATE SET subject=excluded.subject, body=excluded.body, active=1",
+                 (st["id"], label, subject, body, iso(utcnow())))
+    return ab_report(conn, campaign)
+
+
+def retire_variant(conn, campaign: str, step: int, label: str) -> dict:
+    """Stop assigning new leads to a variant. Leads already on it keep their copy for follow-ups."""
+    c, st = _step_row(conn, campaign, step)
+    n = conn.execute("UPDATE step_variants SET active=0 WHERE step_id=? AND label=?", (st["id"], label)).rowcount
+    if not n:
+        raise ValueError(f"no variant {label} on step {step}")
+    return ab_report(conn, campaign)
+
+
+def _z_test(r1: int, n1: int, r2: int, n2: int) -> float:
+    import math
+    if not n1 or not n2:
+        return 0.0
+    p = (r1 + r2) / (n1 + n2)
+    se = math.sqrt(p * (1 - p) * (1 / n1 + 1 / n2)) if 0 < p < 1 else 0
+    return ((r1 / n1) - (r2 / n2)) / se if se else 0.0
+
+
+def ab_report(conn, campaign: str, min_sent: int = 30) -> dict:
+    """Reply rate per variant, with a plain-language verdict.
+
+    A reply counts for the variant the lead was assigned, whichever step they replied to.
+    Verdict rules: every active variant needs `min_sent` first emails; the leader must beat
+    the runner-up by 2+ points; z >= 1.65 (about 90% confidence) is called 'confident'.
+    """
+    c = get_campaign_row(conn, campaign)
+    rows = []
+    for v in conn.execute("SELECT sv.*, s.step_number FROM step_variants sv JOIN steps s ON s.id=sv.step_id "
+                          "WHERE s.campaign_id=? ORDER BY s.step_number, sv.id", (c["id"],)):
+        sent = conn.execute("SELECT COUNT(*) FROM messages WHERE campaign_id=? AND direction='out' AND kind='sequence' "
+                            "AND step_number=? AND variant=?", (c["id"], v["step_number"], v["label"])).fetchone()[0]
+        leads = conn.execute("SELECT COUNT(*) FROM enrollments WHERE campaign_id=? AND variant=?", (c["id"], v["label"])).fetchone()[0]
+        replied = conn.execute("SELECT COUNT(DISTINCT m.lead_id) FROM messages m JOIN enrollments e ON e.lead_id=m.lead_id "
+                               "AND e.campaign_id=? WHERE m.direction='in' AND m.kind='reply' AND e.variant=?",
+                               (c["id"], v["label"])).fetchone()[0]
+        bounced = conn.execute("SELECT COUNT(*) FROM enrollments WHERE campaign_id=? AND variant=? AND status='bounced'",
+                               (c["id"], v["label"])).fetchone()[0]
+        rows.append({"step": v["step_number"], "label": v["label"], "active": bool(v["active"]), "subject": v["subject"],
+                     "leads": leads, "sent": sent, "replied": replied, "bounced": bounced,
+                     "reply_rate": round(replied / sent, 4) if sent else 0.0})
+    verdict, leader = "no A/B test running", None
+    firsts = [r for r in rows if r["step"] == 1 and r["active"]]
+    if len(firsts) >= 2:
+        ranked = sorted(firsts, key=lambda r: r["reply_rate"], reverse=True)
+        a, b = ranked[0], ranked[1]
+        z = _z_test(a["replied"], a["sent"], b["replied"], b["sent"])
+        gap = (a["reply_rate"] - b["reply_rate"]) * 100
+        if min(r["sent"] for r in firsts) < min_sent:
+            need = max(min_sent - r["sent"] for r in firsts)
+            verdict = f"need more data: about {need} more sends on the smallest variant before calling it"
+        elif gap >= 2 and z >= 1.65:
+            verdict, leader = f"{a['label']} wins (confident): {gap:.1f} points ahead, z={z:.2f}", a["label"]
+        elif gap >= 2:
+            verdict, leader = f"{a['label']} leads by {gap:.1f} points but it could be noise (z={z:.2f}); keep running", a["label"]
+        else:
+            verdict = f"too close to call ({gap:.1f} point gap)"
+    return {"campaign": c["name"], "variants": rows, "verdict": verdict, "leader": leader, "min_sent": min_sent}
+
+
+def outbox(conn, limit: int = 50, since: str = "") -> list[dict]:
+    q = ("SELECT m.id, m.sent_at, m.from_addr, m.to_addr, m.subject, m.step_number, m.variant, m.kind, c.name AS campaign "
+         "FROM messages m LEFT JOIN campaigns c ON c.id=m.campaign_id WHERE m.direction='out'")
+    args: list = []
+    if since:
+        q += " AND m.sent_at > ?"; args.append(since)
+    return [dict(r) for r in conn.execute(q + " ORDER BY m.id DESC LIMIT ?", (*args, limit))]
+
+
+def inbox_events(conn, since: str = "", limit: int = 50) -> list[dict]:
+    """Replies, bounces and unsubscribes after `since` (ISO time), newest first."""
+    q = ("SELECT m.id, m.kind, m.sent_at, m.from_addr, m.subject, substr(m.body,1,600) AS body, m.handled, "
+         "l.company, l.first_name, c.name AS campaign, e.variant FROM messages m LEFT JOIN leads l ON l.id=m.lead_id "
+         "LEFT JOIN campaigns c ON c.id=m.campaign_id LEFT JOIN enrollments e ON e.lead_id=m.lead_id AND e.campaign_id=m.campaign_id "
+         "WHERE m.direction='in'")
+    args: list = []
+    if since:
+        q += " AND m.sent_at > ?"; args.append(since)
+    return [dict(r) for r in conn.execute(q + " ORDER BY m.id DESC LIMIT ?", (*args, limit))]
 
 
 def enroll(conn, campaign: str, emails: list[str] | None = None, tag: str = "", status: str = "") -> dict:
@@ -367,14 +480,16 @@ def preview(conn, campaign: str, lead_email: str | None = None, step: int | None
                 except RenderError:
                     pass
             continue
-        try:
-            subj, body = engine.render_step(conn, c, s, lead, mb, thread_subject=thread_subject)
-            if s["subject"].strip():
-                thread_subject = subj
-            out.append({"step": s["step_number"], "delay_days": s["delay_days"], "from": mb["email"],
-                        "to": lead["email"], "subject": subj, "body": body})
-        except RenderError as e:
-            out.append({"step": s["step_number"], "error": str(e)})
+        variants = [dict(v) for v in engine.step_variants(conn, s["id"])] or [None]
+        for v in variants:
+            try:
+                subj, body = engine.render_step(conn, c, s, lead, mb, thread_subject=thread_subject, variant=v)
+                out.append({"step": s["step_number"], "variant": v["label"] if v else "", "delay_days": s["delay_days"],
+                            "from": mb["email"], "to": lead["email"], "subject": subj, "body": body})
+            except RenderError as e:
+                out.append({"step": s["step_number"], "variant": v["label"] if v else "", "error": str(e)})
+        if s["subject"].strip() and out and "subject" in out[-len(variants)]:
+            thread_subject = out[-len(variants)]["subject"]
     return out
 
 
@@ -398,7 +513,8 @@ def validate_campaign(conn, campaign: str) -> dict:
         for lead in enrolled:
             for s in steps:
                 try:
-                    engine.render_step(conn, c, s, lead, boxes[0])
+                    for v in [dict(x) for x in engine.step_variants(conn, s["id"])] or [None]:
+                        engine.render_step(conn, c, s, lead, boxes[0], variant=v)
                 except RenderError as e:
                     bad.append(f"{lead['email']} step {s['step_number']}: {e}")
                     break
@@ -445,9 +561,12 @@ def campaign_stats(conn, cid: int) -> dict:
 def campaign_detail(conn, campaign) -> dict:
     c = get_campaign_row(conn, campaign)
     d = dict(c)
-    d["steps"] = [dict(s) for s in conn.execute(
-        "SELECT step_number, delay_days, subject, body FROM steps WHERE campaign_id=? ORDER BY step_number",
-        (c["id"],))]
+    d["steps"] = []
+    for s in conn.execute("SELECT id, step_number, delay_days, subject, body FROM steps WHERE campaign_id=? ORDER BY step_number", (c["id"],)):
+        row = dict(s)
+        row["variants"] = [{k: v[k] for k in ("label", "subject", "body", "active")} for v in engine.step_variants(conn, s["id"], False)]
+        row.pop("id")
+        d["steps"].append(row)
     d["mailboxes"] = [m["email"] for m in engine.campaign_mailboxes(conn, c)]
     d["stats"] = campaign_stats(conn, c["id"])
     return d
@@ -503,3 +622,41 @@ def mark_handled(conn, message_ids: list[int]) -> dict:
 
 def list_suppression(conn, limit: int = 100) -> list[dict]:
     return [dict(r) for r in conn.execute("SELECT * FROM suppression ORDER BY created_at DESC LIMIT ?", (limit,))]
+
+
+# ---------------------------------------------------------------- self-optimizing A/B
+
+def auto_optimize(conn, min_sent: int = 30) -> list[dict]:
+    """Retire losing step 1 variants once a winner is confident, and record why.
+
+    Runs hourly from the worker. Each change is written to `decisions` with the numbers
+    behind it so Jarvis can report it (and push it to the Jarvis Log in Notion).
+    """
+    made = []
+    for c in conn.execute("SELECT * FROM campaigns WHERE status='active'").fetchall():
+        rep = ab_report(conn, c["name"], min_sent)
+        firsts = [v for v in rep["variants"] if v["step"] == 1 and v["active"]]
+        if rep["leader"] and "confident" in rep["verdict"] and len(firsts) > 1:
+            losers = [v["label"] for v in firsts if v["label"] != rep["leader"]]
+            for label in losers:
+                retire_variant(conn, c["name"], 1, label)
+            summary = (f"{c['name']}: variant {rep['leader']} won ({rep['verdict']}). Retired {', '.join(losers)}. "
+                       f"All new leads now get {rep['leader']}. Add a new challenger to keep testing.")
+            made.append(_decide(conn, c["name"], "ab_winner", summary, {"report": rep, "retired": losers}))
+    return made
+
+
+def _decide(conn, campaign: str, kind: str, summary: str, data: dict) -> dict:
+    cur = conn.execute("INSERT INTO decisions (at, campaign, kind, summary, data) VALUES (?,?,?,?,?)",
+                       (iso(utcnow()), campaign, kind, summary, json.dumps(data, default=str)))
+    return {"id": cur.lastrowid, "campaign": campaign, "kind": kind, "summary": summary}
+
+
+def decisions(conn, unreported_only: bool = False, mark_reported: bool = False, limit: int = 50) -> list[dict]:
+    q = "SELECT * FROM decisions" + (" WHERE reported=0" if unreported_only else "") + " ORDER BY id DESC LIMIT ?"
+    rows = [dict(r) for r in conn.execute(q, (limit,))]
+    for r in rows:
+        r["data"] = json.loads(r["data"] or "{}")
+    if mark_reported and rows:
+        conn.execute(f"UPDATE decisions SET reported=1 WHERE id IN ({','.join('?' * len(rows))})", [r["id"] for r in rows])
+    return rows

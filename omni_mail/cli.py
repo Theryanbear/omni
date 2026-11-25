@@ -29,6 +29,7 @@ def cmd_run(args) -> None:
     signal.signal(signal.SIGTERM, _stop)
 
     last_sync = 0.0
+    last_opt = 0.0
     print(f"omni-mail worker started ({'DRY RUN' if args.dry_run else 'live'}); Ctrl+C to stop", flush=True)
     while not stop:
         conn = connect()
@@ -40,6 +41,10 @@ def cmd_run(args) -> None:
                 for e in r["errors"]:
                     print(f"{utcnow()} inbox error: {e}", flush=True)
                 last_sync = time.time()
+            if time.time() - last_opt >= 3600:
+                for d in service.auto_optimize(conn):
+                    print(f"{utcnow()} decision: {d['summary']}", flush=True)
+                last_opt = time.time()
             r = engine.send_tick(conn, transport, dry_run=args.dry_run)
             for s in r["sent"]:
                 print(f"{utcnow()} sent step {s['step']} [{s['campaign']}] {s['from']} -> {s['to']}", flush=True)
@@ -99,8 +104,24 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("mcp", help="run the MCP server on stdio (for Claude)")
 
+    s = sub.add_parser("api", help="one JSON request (argument or stdin) -> JSON answer")
+    s.add_argument("request", nargs="?", default=None)
+    sub.add_parser("install-worker", help="macOS: run the worker in the background at login (launchd)")
+    sub.add_parser("uninstall-worker", help="macOS: stop and remove the background worker")
+    sub.add_parser("worker-status", help="macOS: is the background worker running?")
+    sub.add_parser("version", help="print the engine version")
+
     args = p.parse_args(argv)
 
+    if args.cmd == "api":
+        from .api import main as api_main
+        return api_main(args.request)
+    if args.cmd == "version":
+        from . import __version__
+        return print(__version__)
+    if args.cmd in ("install-worker", "uninstall-worker", "worker-status"):
+        from .worker import run as worker_cmd
+        return worker_cmd(args.cmd)
     if args.cmd == "mcp":
         from .mcp_server import main as mcp_main
         return mcp_main()

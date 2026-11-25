@@ -117,6 +117,27 @@ CREATE TABLE IF NOT EXISTS messages (
     handled       INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS step_variants (
+    id      INTEGER PRIMARY KEY,
+    step_id INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
+    label   TEXT NOT NULL,
+    subject TEXT NOT NULL DEFAULT '',
+    body    TEXT NOT NULL,
+    active  INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT '',
+    UNIQUE (step_id, label)
+);
+
+CREATE TABLE IF NOT EXISTS decisions (
+    id         INTEGER PRIMARY KEY,
+    at         TEXT NOT NULL,
+    campaign   TEXT NOT NULL,
+    kind       TEXT NOT NULL,       -- ab_winner | needs_challenger
+    summary    TEXT NOT NULL,
+    data       TEXT NOT NULL DEFAULT '{}',
+    reported   INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_msgid ON messages(message_id);
 CREATE INDEX IF NOT EXISTS idx_messages_out ON messages(direction, mailbox_id, sent_at);
 CREATE INDEX IF NOT EXISTS idx_enroll_due ON enrollments(status, next_send_at);
@@ -173,6 +194,7 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     for k, v in DEFAULT_SETTINGS.items():
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
     conn.execute(
@@ -180,6 +202,20 @@ def connect(path: Path | str | None = None) -> sqlite3.Connection:
         (secrets.token_hex(32),),
     )
     return conn
+
+
+MIGRATIONS = {
+    "enrollments": [("variant", "TEXT NOT NULL DEFAULT ''")],
+    "messages": [("variant", "TEXT NOT NULL DEFAULT ''")],
+}
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, cols in MIGRATIONS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, decl in cols:
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
 
 
 def get_setting(conn: sqlite3.Connection, key: str) -> str:

@@ -126,17 +126,43 @@ def build_email(conn, mailbox, lead, subject: str, body: str,
     return msg
 
 
+def step_variants(conn, step_id: int, active_only: bool = True) -> list[sqlite3.Row]:
+    q = "SELECT * FROM step_variants WHERE step_id=?" + (" AND active=1" if active_only else "") + " ORDER BY id"
+    return conn.execute(q, (step_id,)).fetchall()
+
+
+def choose_variant(conn, camp, step, enr) -> dict | None:
+    """Pick the A/B variant for this enrollment's step.
+
+    An enrollment keeps one label for the whole sequence. On first assignment the
+    active variant with the fewest enrollments in this campaign wins (balanced split).
+    Returns {label, subject, body} or None when the step has no variants.
+    """
+    label = (enr["variant"] if enr is not None and "variant" in enr.keys() else "") or ""
+    if label:
+        row = conn.execute("SELECT * FROM step_variants WHERE step_id=? AND label=?", (step["id"], label)).fetchone()
+        return dict(row) if row else None
+    actives = step_variants(conn, step["id"])
+    if not actives:
+        return None
+    counts = {r["variant"]: r["n"] for r in conn.execute(
+        "SELECT variant, COUNT(*) n FROM enrollments WHERE campaign_id=? GROUP BY variant", (camp["id"],))}
+    return dict(min(actives, key=lambda v: (counts.get(v["label"], 0), v["id"])))
+
+
 def render_step(conn, camp, step, lead, mailbox, enrollment_id: int | str = "preview",
-                thread_subject: str = "") -> tuple[str, str]:
-    """Return (subject, body) for a step. Raises RenderError."""
+                thread_subject: str = "", variant: dict | None = None) -> tuple[str, str]:
+    """Return (subject, body) for a step (or one of its A/B variants). Raises RenderError."""
     fields = lead_fields(lead, mailbox)
     seed = f"{camp['id']}:{lead['id']}:{step['step_number']}"
-    if step["subject"].strip():
-        subject = render(step["subject"], fields, seed + ":s")
+    subj_t = variant["subject"] if variant else step["subject"]
+    body_t = variant["body"] if variant else step["body"]
+    if subj_t.strip():
+        subject = render(subj_t, fields, seed + ":s")
     else:
         base = thread_subject or "(no subject)"
         subject = base if base.lower().startswith("re:") else "Re: " + base
-    body = render(step["body"], fields, seed + ":b") + footer(conn, mailbox, lead["email"])
+    body = render(body_t, fields, seed + ":b") + footer(conn, mailbox, lead["email"])
     return subject, body
 
 
@@ -223,22 +249,24 @@ def send_tick(conn: sqlite3.Connection, transport: Transport, now: datetime | No
             else:
                 mb = min(available, key=lambda m: mailbox_sent_today(conn, m["id"], now))
 
+            variant = choose_variant(conn, camp, step, enr)
+            label = variant["label"] if variant else (enr["variant"] or "")
             try:
-                subject, body = render_step(conn, camp, step, lead, mb, enr["id"], enr["thread_subject"])
+                subject, body = render_step(conn, camp, step, lead, mb, enr["id"], enr["thread_subject"], variant)
             except RenderError as e:
                 conn.execute("UPDATE enrollments SET status='error', last_error=? WHERE id=?",
                              (str(e), enr["id"]))
                 report["errors"].append(f"{lead['email']}: {e}")
                 continue
 
-            new_thread = bool(step["subject"].strip())
+            new_thread = bool((variant["subject"] if variant else step["subject"]).strip())
             refs = "" if new_thread else enr["thread_refs"]
             last_ref = refs.split()[-1] if refs else ""
             msg = build_email(conn, mb, lead, subject, body, in_reply_to=last_ref, references=refs)
 
             if dry_run:
                 report["sent"].append({"to": lead["email"], "from": mb["email"], "campaign": camp["name"],
-                                       "step": step_no, "subject": subject})
+                                       "step": step_no, "subject": subject, "variant": label})
                 used_mailboxes.add(mb["id"])
                 remaining -= 1
                 continue
@@ -265,7 +293,9 @@ def send_tick(conn: sqlite3.Connection, transport: Transport, now: datetime | No
                         enrollment_id=enr["id"], lead_id=lead["id"], mailbox_id=mb["id"],
                         step_number=step_no, message_id=mid, in_reply_to=last_ref,
                         from_addr=mb["email"], to_addr=lead["email"], subject=subject, body=body,
-                        sent_at=iso(now))
+                        sent_at=iso(now), variant=label)
+            if label and not enr["variant"]:
+                conn.execute("UPDATE enrollments SET variant=? WHERE id=?", (label, enr["id"]))
             thread_subject = subject if new_thread else (enr["thread_subject"] or subject)
             thread_refs = (mid if new_thread else (refs + " " + mid)).strip()
             nxt = steps.get(step_no + 1)
@@ -286,7 +316,7 @@ def send_tick(conn: sqlite3.Connection, transport: Transport, now: datetime | No
             used_mailboxes.add(mb["id"])
             remaining -= 1
             report["sent"].append({"to": lead["email"], "from": mb["email"], "campaign": camp["name"],
-                                   "step": step_no, "subject": subject})
+                                   "step": step_no, "subject": subject, "variant": label})
 
     # Mark campaigns with nothing left to do as completed.
     conn.execute(

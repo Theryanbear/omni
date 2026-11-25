@@ -208,10 +208,32 @@ def update_campaign(campaign: str, name: str | None = None, timezone: str | None
 @mcp.tool()
 def set_sequence(campaign: str, steps: list[dict]) -> str:
     """Replace the campaign's email steps: [{"subject": "...", "body": "...", "delay_days": 0}, ...].
+    For an A/B test give a step "variants": [{"label": "A", "subject": "...", "body": "..."}, ...].
     delay_days = wait after the previous step. Empty subject on a follow-up = reply in the same thread.
     Do not include a signature or unsubscribe line; the footer adds both."""
     with db() as c:
         return _out(service.set_sequence(c, campaign, steps))
+
+
+@mcp.tool()
+def ab_report(campaign: str, min_sent: int = 30) -> str:
+    """Reply rate per A/B variant with a verdict (needs min_sent first emails per variant to call a winner)."""
+    with db() as c:
+        return _out(service.ab_report(c, campaign, min_sent))
+
+
+@mcp.tool()
+def add_variant(campaign: str, step: int, label: str, subject: str, body: str) -> str:
+    """Add or replace an A/B variant on a step; new leads are split evenly across active variants."""
+    with db() as c:
+        return _out(service.add_variant(c, campaign, step, label, subject, body))
+
+
+@mcp.tool()
+def retire_variant(campaign: str, step: int, label: str) -> str:
+    """Stop giving new leads this variant (the loser of a test). Existing leads keep it for follow-ups."""
+    with db() as c:
+        return _out(service.retire_variant(c, campaign, step, label))
 
 
 @mcp.tool()
