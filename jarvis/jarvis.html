@@ -1,0 +1,737 @@
+<title>JARVIS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<script type="application/json" id="claude-artifacts-manifest">{"permissions": ["full-access", "shortcuts", "notifications", "menu-bar"]}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE occasion-grade work tool: a heads up display, calm until something needs Ryan
+   IDEA Tony Stark's HUD: an arc reactor core that is the business, panels you flick between
+   PICTURE the reactor: spinning rings whose arcs are recurring revenue toward $10k, days left, Jarvis's state
+   COLOUR night #02060d, holo cyan #3fe0ff, deep teal, amber #ffb547 for money on the table, red for stale
+   TYPE Oxanium (display, numerals) + Rajdhani (text)
+   LAYOUT laptop: top bar, flickable screens left, Jarvis comms rail right; phone: bar, screen, comms stacked */
+:root{color-scheme:dark;--bg:#02060d;--bg2:#06131f;--ink:#d9f6ff;--mute:#6fa3b6;--cy:#3fe0ff;--cy2:#1690b8;--cyd:rgba(63,224,255,.14);--line:rgba(63,224,255,.22);--am:#ffb547;--rd:#ff5468;--gn:#5dffb6;--panel:rgba(8,30,46,.55)}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:radial-gradient(ellipse at 35% 40%,#08233a 0%,#030b15 55%,#02060d 100%);color:var(--ink);font:16px/1.45 Rajdhani,system-ui,sans-serif;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(rgba(63,224,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(63,224,255,.035) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 3px)}
+.app{position:relative;height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);z-index:1}
+.bar{display:flex;align-items:center;gap:14px;padding:10px max(3vw,16px,env(safe-area-inset-right,0px)) 10px max(3vw,16px,env(safe-area-inset-left,0px));padding-top:max(10px,env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);app-region:drag;-webkit-app-region:drag}
+.bar.mac{padding-left:88px}
+.bar button,.bar a{app-region:no-drag;-webkit-app-region:no-drag}
+.logo{font:700 18px Oxanium,sans-serif;letter-spacing:.32em;color:var(--cy);text-shadow:0 0 12px rgba(63,224,255,.6);white-space:nowrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+.chip{font:500 12px Oxanium,sans-serif;letter-spacing:.08em;color:var(--mute);border:1px solid var(--line);padding:3px 9px;border-radius:99px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--mute)}
+.chip.ok i{background:var(--gn);box-shadow:0 0 8px var(--gn)}.chip.warn i{background:var(--am)}.chip.bad i{background:var(--rd)}
+.clock{font:500 14px Oxanium,sans-serif;color:var(--cy);font-variant-numeric:tabular-nums;white-space:nowrap}
+.btn{font:600 13px Oxanium,sans-serif;letter-spacing:.06em;color:var(--cy);background:var(--cyd);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;min-height:36px}
+.btn:hover{background:rgba(63,224,255,.24)}.btn:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+.btn.am{color:var(--am);border-color:rgba(255,181,71,.4);background:rgba(255,181,71,.1)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
+.stage{position:relative;min-height:0;overflow:hidden;perspective:1400px;touch-action:pan-y}
+.screen{position:absolute;inset:0;padding:18px max(3vw,16px) 72px;overflow:auto;transition:transform .55s cubic-bezier(.2,.8,.2,1),opacity .55s;will-change:transform}
+.screen h2{font:500 13px Oxanium,sans-serif;letter-spacing:.24em;color:var(--cy);margin:0 0 10px;text-transform:uppercase}
+.nav{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;gap:6px;z-index:3;pointer-events:none}
+.nav button{pointer-events:auto;font:500 11px Oxanium,sans-serif;letter-spacing:.14em;color:var(--mute);background:rgba(2,6,13,.7);border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer;min-height:32px}
+.nav button[aria-current=true]{color:var(--bg);background:var(--cy);border-color:var(--cy);box-shadow:0 0 14px rgba(63,224,255,.6)}
+.hint{position:absolute;right:16px;bottom:52px;font:400 12px Oxanium,sans-serif;color:var(--mute);letter-spacing:.1em;z-index:3}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;position:relative;backdrop-filter:blur(6px)}
+.panel::before,.panel::after{content:"";position:absolute;width:14px;height:14px;border:2px solid var(--cy);opacity:.7}
+.panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0;border-radius:10px 0 0 0}
+.panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0;border-radius:0 0 10px 0}
+.core{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:center;min-height:100%;padding-bottom:50px}
+.reactor{position:relative;aspect-ratio:1;max-height:calc(100vh - 150px);width:100%;max-width:560px;justify-self:center}
+.reactor svg{width:100%;height:100%;overflow:visible}
+.rc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.rc small{font:500 11px Oxanium,sans-serif;letter-spacing:.3em;color:var(--mute)}
+.rc b{font:300 clamp(34px,6vw,64px)/1 Oxanium,sans-serif;color:#fff;text-shadow:0 0 24px rgba(63,224,255,.8);font-variant-numeric:tabular-nums}
+.rc span{font:500 13px Oxanium,sans-serif;color:var(--cy);letter-spacing:.12em;margin-top:6px}
+.rc em{font:normal 600 12px Oxanium,sans-serif;letter-spacing:.2em;margin-top:10px;color:var(--mute)}
+.spin{transform-box:fill-box;transform-origin:center;animation:rot var(--d,40s) linear infinite}
+.spin.rev{animation-direction:reverse}
+@keyframes rot{to{transform:rotate(360deg)}}
+.arc{transition:stroke-dasharray 1.6s cubic-bezier(.2,.8,.2,1)}
+body.think .fast{--d:2.2s!important}body.listen .fast{--d:5s!important}
+body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.side{display:grid;gap:14px}
+.gauges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.gauge{display:flex;gap:12px;align-items:center}
+.gauge svg{width:66px;height:66px;flex:none}
+.gauge b{display:block;font:500 22px Oxanium,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.gauge span{display:block;font-size:13px;color:var(--mute);line-height:1.2}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.list li{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 4px;border-bottom:1px solid rgba(63,224,255,.1)}
+.list li.empty{display:block}
+.list li i{width:8px;height:8px;border-radius:2px;background:var(--cy);transform:rotate(45deg)}
+.list li i.am{background:var(--am)}.list li i.rd{background:var(--rd)}.list li i.gn{background:var(--gn)}
+.list .t{font-weight:600;font-size:15px}.list .s{display:block;font-size:13px;color:var(--mute)}
+.list .v{font:500 13px Oxanium,sans-serif;color:var(--am);white-space:nowrap;font-variant-numeric:tabular-nums}
+.empty{color:var(--mute);font-size:14px;padding:10px 4px}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-bottom:14px}
+.stg{text-align:center}.stg svg{width:84px;height:84px}.stg span{display:block;font:500 12px Oxanium,sans-serif;letter-spacing:.1em;color:var(--mute)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:56px}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{text-align:left;font:500 11px Oxanium,sans-serif;letter-spacing:.16em;color:var(--mute);padding:6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:8px 6px;border-bottom:1px solid rgba(63,224,255,.08);vertical-align:top}
+.tbl td.n{text-align:right;font-family:Oxanium,sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tag{font:500 11px Oxanium,sans-serif;letter-spacing:.08em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--cy);white-space:nowrap}
+.tag.rd{color:var(--rd);border-color:rgba(255,84,104,.45)}.tag.am{color:var(--am);border-color:rgba(255,181,71,.45)}.tag.gn{color:var(--gn);border-color:rgba(93,255,182,.4)}
+.scroll{overflow-x:auto}
+.ladder{display:grid;gap:10px}
+.rung{display:grid;grid-template-columns:7em minmax(0,1fr) 5em;gap:10px;align-items:center;font-size:14px}
+.rung .tr{height:10px;border-radius:99px;background:rgba(63,224,255,.1);overflow:hidden}
+.rung .tr i{display:block;height:100%;background:linear-gradient(90deg,var(--cy2),var(--cy));box-shadow:0 0 10px var(--cy);transition:width 1.4s}
+.rung b{font:500 13px Oxanium,sans-serif;text-align:right;font-variant-numeric:tabular-nums}
+.agents{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:14px}
+.agent{display:flex;gap:12px;align-items:center}
+.agent svg{width:48px;height:48px;flex:none}
+.agent b{display:block;font-size:15px;line-height:1.2}.agent span{font:500 11px Oxanium,sans-serif;letter-spacing:.1em;color:var(--mute)}
+.agent a{color:var(--cy);font-size:13px}
+.console{font:13px/1.45 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:8px;padding:12px;min-height:160px;max-height:46vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#9fe9ff}
+.console .cmd{color:var(--am)}.console .err{color:var(--rd)}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.comms{border-left:1px solid var(--line);display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;background:linear-gradient(180deg,rgba(6,19,31,.7),rgba(2,6,13,.85))}
+.ch{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ch svg{width:34px;height:34px}
+.ch b{font:600 14px Oxanium,sans-serif;letter-spacing:.24em;color:var(--cy)}.ch span{display:block;font-size:12px;color:var(--mute);letter-spacing:.04em}
+.ch .btn{margin-left:auto;padding:5px 10px;min-height:32px}
+.log{overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.msg{font-size:15.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg small{display:block;font:500 10px Oxanium,sans-serif;letter-spacing:.24em;color:var(--mute);margin-bottom:2px}
+.msg.j{border-left:2px solid var(--cy);padding-left:10px}
+.msg.u{color:#a9c9d6;text-align:right}
+.msg.sys{font-size:13px;color:var(--mute)}
+.card{border:1px solid rgba(255,181,71,.5);background:rgba(255,181,71,.07);border-radius:8px;padding:10px;font-size:14px}
+.card b{display:block;font:600 12px Oxanium,sans-serif;letter-spacing:.14em;color:var(--am);margin-bottom:4px}
+.card code{display:block;font:12.5px ui-monospace,Menlo,monospace;background:rgba(0,0,0,.35);padding:8px;border-radius:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.card .row{display:flex;gap:8px}
+.cin{padding:10px 12px 12px;border-top:1px solid var(--line);padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.chipsq{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+.chipsq button{font:500 12px Rajdhani,sans-serif;color:var(--ink);background:rgba(63,224,255,.08);border:1px solid var(--line);border-radius:99px;padding:5px 10px;white-space:nowrap;cursor:pointer;min-height:30px}
+.inrow{display:flex;gap:8px;align-items:center}
+.inrow input{flex:1;font:16px Rajdhani,sans-serif;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px}
+.inrow input:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(63,224,255,.15)}
+.mic{width:44px;height:44px;border-radius:50%;border:1px solid var(--cy);background:var(--cyd);color:var(--cy);cursor:pointer;display:grid;place-items:center;flex:none}
+.mic.on{background:var(--cy);color:var(--bg);box-shadow:0 0 18px var(--cy);animation:pulse 1s infinite}
+.mic svg{width:20px;height:20px}
+@media(max-width:980px){body{overflow:auto}.app{height:auto;min-height:100%}.main{grid-template-columns:minmax(0,1fr)}.stage{height:82vh;min-height:560px}.comms{border-left:0;border-top:1px solid var(--line);height:auto;min-height:380px}.log{max-height:50vh}.core{grid-template-columns:minmax(0,1fr)}.reactor{max-width:420px}.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.chips .chip:nth-child(n+3){display:none}.clock{display:none}.hint{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 9px;letter-spacing:.06em}.reactor{max-width:340px}}
+@media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on{animation:none!important}.screen,.arc,.rung .tr i{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="bar" id="bar">
+    <div class="logo">J.A.R.V.I.S</div>
+    <div class="chips" id="chips">
+      <span class="chip" id="c-notion"><i></i>NOTION</span>
+      <span class="chip" id="c-gmail"><i></i>GMAIL</span>
+      <span class="chip" id="c-agents"><i></i>AGENTS</span>
+      <span class="chip" id="c-mac"><i></i>MAC</span>
+    </div>
+    <button class="btn am" id="install" hidden>Install on desktop</button>
+    <button class="btn" id="powers" hidden>Enable desktop powers</button>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <div class="main">
+    <div class="stage" id="stage" aria-roledescription="carousel">
+      <section class="screen" data-name="core" aria-label="Core">
+        <div class="core">
+          <div class="reactor" id="reactor" role="img" aria-label="Recurring revenue toward the 10,000 dollar monthly goal">
+            <svg viewBox="-56 -14 512 428" id="rsvg"></svg>
+            <div class="rc"><small>MONTHLY RECURRING</small><b id="r-mrr">$0</b><span id="r-sub">of $10,000 goal</span><em id="r-state">STANDING BY</em></div>
+          </div>
+          <div class="side">
+            <div class="panel">
+              <h2>Scoreboard</h2>
+              <div class="gauges" id="gauges"></div>
+            </div>
+            <div class="panel">
+              <h2>Needs you</h2>
+              <ul class="list" id="needs"><li class="empty">Connecting to Notion…</li></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-name="pipeline" aria-label="Pipeline">
+        <h2>Pipeline</h2>
+        <div class="stages" id="stages"></div>
+        <div class="panel scroll">
+          <table class="tbl"><thead><tr><th>Company</th><th>Stage</th><th>Last touch</th><th>Next</th></tr></thead><tbody id="pipe"></tbody></table>
+        </div>
+      </section>
+
+      <section class="screen" data-name="money" aria-label="Money">
+        <div class="grid2">
+          <div class="panel">
+            <h2>Milestones</h2>
+            <div class="ladder" id="ladder"></div>
+          </div>
+          <div class="panel scroll">
+            <h2>Accounts</h2>
+            <table class="tbl"><thead><tr><th>Account</th><th>Status</th><th style="text-align:right">Monthly</th></tr></thead><tbody id="accts"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-name="ops" aria-label="Agents and log">
+        <h2>Claude agents</h2>
+        <div class="agents" id="agents"><div class="empty">Looking for running agents…</div></div>
+        <div class="panel">
+          <h2>Jarvis log</h2>
+          <ul class="list" id="jlog"></ul>
+        </div>
+      </section>
+
+      <section class="screen" data-name="mac" aria-label="Mac control">
+        <h2>Mac control</h2>
+        <p style="margin:0;color:var(--mute);max-width:60ch">Ask Jarvis to do things on your MacBook (open apps, find files, organize folders). Every command shows here first and runs only when you press Approve.</p>
+        <div class="quick">
+          <button class="btn" data-ask="What's using my disk space? Just look, don't delete anything.">Disk check</button>
+          <button class="btn" data-ask="Open my Downloads folder and tell me the 5 newest files.">Newest downloads</button>
+          <button class="btn" data-ask="How much battery do I have and is anything hogging CPU?">Battery and CPU</button>
+        </div>
+        <div class="console" id="console">Mac console ready. Commands Jarvis runs will appear here.</div>
+      </section>
+
+      <nav class="nav" id="nav" aria-label="Screens"></nav>
+      <div class="hint">SWIPE · ← → · 1-5</div>
+    </div>
+
+    <aside class="comms" aria-label="Jarvis">
+      <div class="ch">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="none" stroke="#3fe0ff" stroke-opacity=".35" stroke-width="2"/><circle class="spin fast pulse" style="--d:9s" cx="20" cy="20" r="17" fill="none" stroke="#3fe0ff" stroke-width="2" stroke-dasharray="20 87"/><circle cx="20" cy="20" r="6" fill="#3fe0ff"/></svg>
+        <div><b>JARVIS</b><span id="j-status">Online</span></div>
+        <button class="btn" id="voice" aria-pressed="true">Voice on</button>
+      </div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="cin">
+        <div class="chipsq" id="qchips">
+          <button data-ask="Brief me.">Brief me</button>
+          <button data-ask="What's gone stale and who do I call first today?">What's stale?</button>
+          <button data-ask="Draft follow ups for my three biggest open proposals as Gmail drafts.">Draft follow ups</button>
+          <button data-ask="Give me one outside the box idea to add recurring revenue this month.">Big idea</button>
+        </div>
+        <form class="inrow" id="form">
+          <input id="q" autocomplete="off" placeholder="Talk to Jarvis…  (press ` to speak)" aria-label="Message Jarvis">
+          <button type="button" class="mic" id="mic" aria-label="Speak to Jarvis"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+{
+const GOAL = 10000;
+const NS = 'http://www.w3.org/2000/svg';
+const DS = {
+  accounts: 'collection://42342d38-36ae-81c0-9c09-000b90da2916',
+  tracker: 'collection://b4e18a0e-4552-4104-99b9-0d53d52549a3',
+  jarvis: 'collection://42342d38-36ae-81f5-92b6-000bb09ab79f'
+};
+const STAGES = [['Proposal Sent', 'PROPOSAL'], ['Meeting Set', 'MEETING'], ['Replied: Interested', 'INTERESTED'], ['Existing (Hot) - manual', 'HOT'], ['Not Now', 'NOT NOW']];
+const STAGE = Object.fromEntries(STAGES);
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const sv = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const un = (s) => String(s ?? '').replace(/\\([$|*_~`#\[\]()<>])/g, '$1');
+const num = (v) => Number(v) || 0;
+const fmt = (v) => '$' + Math.round(v || 0).toLocaleString('en-US');
+const today = () => { const t = new Date(); return new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())); };
+const pday = (s) => (s ? new Date(String(s).slice(0, 10) + 'T00:00:00Z') : null);
+const ago = (s) => { const d = pday(s); return d ? Math.round((today() - d) / 864e5) : null; };
+const md = (d) => d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
+const isoToday = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const S = { accounts: [], pipeline: [], jarvis: [], agents: [], ok: {}, loaded: false };
+let mcp = null, sample = null, tts = null, dict = null, desktop = null;
+
+/* ---------- clock ---------- */
+const tick = () => { $('clock').textContent = new Date().toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }).toUpperCase(); };
+tick(); setInterval(tick, 15000);
+
+/* ---------- reactor ---------- */
+const R = { arcs: {} };
+function buildReactor() {
+  const s = $('rsvg');
+  s.replaceChildren();
+  const defs = sv('defs', {});
+  const g = sv('radialGradient', { id: 'glow' });
+  g.append(sv('stop', { offset: '0%', 'stop-color': '#3fe0ff', 'stop-opacity': '.55' }), sv('stop', { offset: '60%', 'stop-color': '#1690b8', 'stop-opacity': '.12' }), sv('stop', { offset: '100%', 'stop-color': '#02060d', 'stop-opacity': '0' }));
+  defs.append(g); s.append(defs);
+  s.append(sv('circle', { cx: 200, cy: 200, r: 120, fill: 'url(#glow)', class: 'pulse' }));
+  const ticks = sv('g', { class: 'spin', style: '--d:120s' });
+  for (let i = 0; i < 120; i++) {
+    const a = i * 3 * Math.PI / 180, r1 = i % 10 === 0 ? 184 : 189, r2 = 195;
+    ticks.append(sv('line', { x1: 200 + r1 * Math.cos(a), y1: 200 + r1 * Math.sin(a), x2: 200 + r2 * Math.cos(a), y2: 200 + r2 * Math.sin(a), stroke: '#3fe0ff', 'stroke-opacity': i % 10 === 0 ? .9 : .35, 'stroke-width': i % 10 === 0 ? 2 : 1 }));
+  }
+  s.append(ticks);
+  const C = 2 * Math.PI * 170;
+  s.append(sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .1, 'stroke-width': 14 }));
+  const prog = sv('g', { transform: 'rotate(-90 200 200)' });
+  [['active', '#3fe0ff', 1], ['contracted', '#3fe0ff', .45], ['table', '#ffb547', .85]].forEach(([k, c, o]) => {
+    const a = sv('circle', { cx: 200, cy: 200, r: 170, fill: 'none', stroke: c, 'stroke-opacity': o, 'stroke-width': 14, 'stroke-dasharray': `0 ${C}`, class: 'arc' });
+    if (k === 'table') a.setAttribute('stroke-dasharray', `0 ${C}`);
+    R.arcs[k] = a; prog.append(a);
+  });
+  [[.45, 'STABLE'], [.65, 'HIRE']].forEach(([f, l]) => {
+    const a = f * 2 * Math.PI;
+    prog.append(sv('line', { x1: 200 + 160 * Math.cos(a), y1: 200 + 160 * Math.sin(a), x2: 200 + 182 * Math.cos(a), y2: 200 + 182 * Math.sin(a), stroke: '#d9f6ff', 'stroke-width': 2 }));
+  });
+  s.append(prog);
+  const mk = (f, l) => { const a = (f * 360 - 90) * Math.PI / 180; const t = sv('text', { x: 200 + 212 * Math.cos(a), y: 200 + 212 * Math.sin(a) + 4, fill: '#6fa3b6', 'font-family': 'Oxanium', 'font-size': 10, 'letter-spacing': 2, 'text-anchor': f > .5 ? 'end' : 'start' }); t.textContent = l; s.append(t); };
+  mk(.45, 'STABLE $4.5K'); mk(.65, 'HIRE $6.5K');
+  s.append(sv('circle', { cx: 200, cy: 200, r: 150, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .5, 'stroke-width': 1, 'stroke-dasharray': '2 6', class: 'spin rev', style: '--d:60s' }));
+  const seg = sv('circle', { cx: 200, cy: 200, r: 136, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .75, 'stroke-width': 3, 'stroke-dasharray': '180 105', class: 'spin fast', style: '--d:18s' });
+  s.append(seg);
+  const C2 = 2 * Math.PI * 118;
+  s.append(sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .12, 'stroke-width': 4 }));
+  R.days = sv('circle', { cx: 200, cy: 200, r: 118, fill: 'none', stroke: '#ff5468', 'stroke-opacity': .75, 'stroke-width': 4, 'stroke-dasharray': `0 ${C2}`, transform: 'rotate(-90 200 200)', class: 'arc' });
+  s.append(R.days);
+  s.append(sv('circle', { cx: 200, cy: 200, r: 104, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .3, 'stroke-width': 1, 'stroke-dasharray': '40 14 4 14', class: 'spin rev fast', style: '--d:28s' }));
+  R.C = C; R.C2 = C2;
+}
+buildReactor();
+
+function ring(size, frac, color, opts = {}) {
+  const r = size / 2 - 5, c = 2 * Math.PI * r, s = sv('svg', { viewBox: `0 0 ${size} ${size}`, role: 'img', 'aria-label': opts.label || '' });
+  s.append(sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-opacity': .15, 'stroke-width': 5 }));
+  const a = sv('circle', { cx: size / 2, cy: size / 2, r, fill: 'none', stroke: color, 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-dasharray': `0 ${c}`, transform: `rotate(-90 ${size / 2} ${size / 2})`, class: 'arc' });
+  s.append(a);
+  s.append(sv('circle', { cx: size / 2, cy: size / 2, r: r - 8, fill: 'none', stroke: color, 'stroke-opacity': .5, 'stroke-width': 1, 'stroke-dasharray': '3 5', class: 'spin' + (opts.rev ? ' rev' : ''), style: `--d:${opts.speed || 14}s` }));
+  if (opts.text != null) { const t = sv('text', { x: size / 2, y: size / 2 + 6, 'text-anchor': 'middle', fill: '#fff', 'font-family': 'Oxanium', 'font-size': size / 4 }); t.textContent = opts.text; s.append(t); }
+  requestAnimationFrame(() => requestAnimationFrame(() => a.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, frac)) * c} ${c}`)));
+  return s;
+}
+
+function countUp(node, to) {
+  const from = Number(node.dataset.v || 0); node.dataset.v = to;
+  if (reduced || from === to) { node.textContent = fmt(to); return; }
+  const t0 = performance.now();
+  const step = (t) => { const k = Math.min(1, (t - t0) / 1200), e = 1 - Math.pow(1 - k, 3); node.textContent = fmt(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ---------- derived numbers ---------- */
+function money() {
+  const sum = (st) => S.accounts.filter((r) => st.includes(r.Status)).reduce((s, r) => s + num(r['Monthly $']), 0);
+  const active = sum(['Active']), contracted = sum(['Contracted', 'Trial']);
+  const table = S.jarvis.filter((r) => r.Type === 'Next step' && (r.Status === 'Open' || r.Status === 'Needs Ryan')).reduce((s, r) => s + num(r['Impact $/mo']), 0);
+  return { active, contracted, table, reach: active + contracted + table };
+}
+const daysLeft = () => Math.max(0, Math.ceil((Date.UTC(2026, 11, 31) - today()) / 864e5));
+const needs = () => S.jarvis.filter((r) => r.Status === 'Needs Ryan').sort((a, b) => num(b['Impact $/mo']) - num(a['Impact $/mo']));
+const engaged = () => S.pipeline.filter((r) => r.Status in STAGE);
+const stale = (r) => { const a = ago(r['date:Last touch:start']); return r.Status !== 'Not Now' && (a === null || a > 7); };
+
+/* ---------- render ---------- */
+function render() {
+  const m = money();
+  countUp($('r-mrr'), m.active);
+  $('r-sub').textContent = `of $10,000 · ${fmt(m.reach)} in reach`;
+  let x = 0;
+  [['active', m.active], ['contracted', m.contracted], ['table', m.table]].forEach(([k, v]) => {
+    const f = Math.min(1, v / GOAL), off = Math.min(1, x / GOAL);
+    R.arcs[k].setAttribute('stroke-dasharray', `${Math.max(0, Math.min(f, 1 - off)) * R.C} ${R.C}`);
+    R.arcs[k].setAttribute('stroke-dashoffset', `${-off * R.C}`);
+    x += v;
+  });
+  R.days.setAttribute('stroke-dasharray', `${(daysLeft() / 61) * R.C2} ${R.C2}`);
+
+  const gs = $('gauges'); gs.replaceChildren();
+  [[m.active, 'Active recurring', '#3fe0ff', m.active / GOAL], [m.contracted, 'Signed, not running', '#7fd8ef', m.contracted / GOAL], [m.table, 'On the table', '#ffb547', m.table / GOAL], [null, 'Days to Dec 31', '#ff5468', daysLeft() / 61]].forEach(([v, l, c, f], i) => {
+    const g = el('div', 'gauge');
+    g.append(ring(66, f, c, { speed: 10 + i * 4, rev: i % 2, label: l }));
+    const t = el('div'); t.append(el('b', null, v == null ? String(daysLeft()) : fmt(v)), el('span', null, l)); g.append(t); gs.append(g);
+  });
+
+  const nl = $('needs'); nl.replaceChildren();
+  const nd = needs();
+  if (!S.ok.jarvis) nl.append(el('li', 'empty', S.ok.jarvisErr || 'Connecting to Notion…'));
+  else if (!nd.length) nl.append(el('li', 'empty', 'Nothing waiting on you. Nice.'));
+  nd.slice(0, 6).forEach((r) => {
+    const li = el('li'); li.append(el('i', r.Type === 'Risk' ? 'rd' : 'am'));
+    const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [un(r.Company), r.Type].filter(Boolean).join(' · ')));
+    li.append(t, el('span', 'v', num(r['Impact $/mo']) ? fmt(r['Impact $/mo']) + '/mo' : '')); nl.append(li);
+  });
+
+  const st = $('stages'); st.replaceChildren();
+  const eg = engaged();
+  STAGES.forEach(([k, l], i) => {
+    const n = eg.filter((r) => r.Status === k).length;
+    const d = el('div', 'stg'); d.append(ring(84, eg.length ? n / eg.length : 0, i === 4 ? '#6fa3b6' : i < 2 ? '#ffb547' : '#3fe0ff', { text: String(n), speed: 8 + i * 3, rev: i % 2, label: `${n} ${l}` }), el('span', null, l)); st.append(d);
+  });
+  const pb = $('pipe'); pb.replaceChildren();
+  const order = Object.fromEntries(STAGES.map((s, i) => [s[0], i]));
+  if (!S.ok.pipeline) { const tr = pb.insertRow(); const td = tr.insertCell(); td.colSpan = 4; td.className = 'empty'; td.textContent = S.ok.pipelineErr || 'Connecting to Notion…'; }
+  eg.sort((a, b) => order[a.Status] - order[b.Status] || (ago(b['date:Last touch:start']) ?? 999) - (ago(a['date:Last touch:start']) ?? 999)).forEach((r) => {
+    const tr = pb.insertRow();
+    const c1 = tr.insertCell(); c1.append(el('b', null, un(r.Company))); c1.append(el('div', null, un(r.Area))); c1.lastChild.style.cssText = 'font-size:13px;color:var(--mute)';
+    const c2 = tr.insertCell(); c2.append(el('span', 'tag' + (r.Status === 'Proposal Sent' ? ' am' : ''), STAGE[r.Status]));
+    const c3 = tr.insertCell(); const a = ago(r['date:Last touch:start']);
+    c3.append(el('span', 'tag' + (stale(r) ? ' rd' : ''), a === null ? 'never' : a === 0 ? 'today' : `${a}d ago`));
+    const c4 = tr.insertCell(); const nx = pday(r['date:Next touch:start']); c4.textContent = nx ? md(nx) : '';
+    if (nx && nx < today() && r.Status !== 'Not Now') { c4.style.color = 'var(--am)'; c4.textContent += ' due'; }
+  });
+
+  const ld = $('ladder'); ld.replaceChildren();
+  [['Running now', m.active, 'active'], ['+ Signed', m.active + m.contracted], ['+ On the table', m.reach], ['Stable', 4500, 'mark'], ['Hire salesman', 6500, 'mark'], ['Goal', GOAL, 'mark']].forEach(([l, v, k]) => {
+    const r = el('div', 'rung'); r.append(el('span', null, l)); const tr = el('div', 'tr'); const i = el('i'); tr.append(i);
+    if (k === 'mark') i.style.background = 'rgba(217,246,255,.25)';
+    requestAnimationFrame(() => { i.style.width = Math.min(100, v / GOAL * 100) + '%'; });
+    r.append(tr, el('b', null, fmt(v))); ld.append(r);
+  });
+  const ab = $('accts'); ab.replaceChildren();
+  const ao = { Active: 0, Trial: 1, Contracted: 2, Paused: 3, Churned: 4 };
+  if (!S.ok.accounts) { const td = ab.insertRow().insertCell(); td.colSpan = 3; td.className = 'empty'; td.textContent = S.ok.accountsErr || 'Connecting to Notion…'; }
+  S.accounts.slice().sort((a, b) => (ao[a.Status] ?? 9) - (ao[b.Status] ?? 9) || num(b['Monthly $']) - num(a['Monthly $'])).forEach((r) => {
+    const tr = ab.insertRow(); tr.insertCell().textContent = un(r.Account);
+    tr.insertCell().append(el('span', 'tag' + (r.Status === 'Active' ? ' gn' : r.Status === 'Contracted' ? ' am' : ''), r.Status || ''));
+    const c = tr.insertCell(); c.className = 'n'; c.textContent = r['Monthly $'] == null ? 'unknown' : fmt(r['Monthly $']);
+  });
+
+  const jl = $('jlog'); jl.replaceChildren();
+  S.jarvis.filter((r) => r.Status !== 'Needs Ryan').slice(0, 14).forEach((r) => {
+    const li = el('li'); li.append(el('i', r.Type === 'Win' ? 'gn' : r.Type === 'Risk' ? 'rd' : ''));
+    const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [r.Type, un(r.Company), md(pday(r['date:Date:start']))].filter(Boolean).join(' · ')));
+    li.append(t, el('span', 'v', r.Status || '')); jl.append(li);
+  });
+  if (!jl.children.length) jl.append(el('li', 'empty', S.ok.jarvis ? 'No log entries yet.' : 'Connecting to Notion…'));
+
+  renderAgents();
+  setChip('c-notion', S.ok.accounts && S.ok.pipeline && S.ok.jarvis ? 'ok' : (S.ok.accountsErr || S.ok.pipelineErr || S.ok.jarvisErr) ? 'bad' : '');
+  badge();
+}
+
+function renderAgents() {
+  const box = $('agents'); box.replaceChildren();
+  if (!S.ok.agents) { box.append(el('div', 'empty', S.ok.agentsErr || 'Looking for running agents…')); return; }
+  if (!S.agents.length) { box.append(el('div', 'empty', 'No Claude agents running. Ask Jarvis to dispatch one for a big job.')); return; }
+  S.agents.slice(0, 8).forEach((a, i) => {
+    const b = String(a.status_bucket || a.session_status || '');
+    const col = /WORK|RUNNING/.test(b) ? '#3fe0ff' : /BLOCK/.test(b) ? '#ffb547' : /FAIL/.test(b) ? '#ff5468' : '#5dffb6';
+    const d = el('div', 'agent panel');
+    d.append(ring(48, /WORK|RUNNING/.test(b) ? .66 : 1, col, { speed: /WORK|RUNNING/.test(b) ? 3 + i : 30, label: b }));
+    const t = el('div'); t.append(el('b', null, a.title || 'Untitled agent'), el('span', null, b.replace(/SESSION_STATUS_(BUCKET_)?/, '').replace(/_/g, ' ')));
+    if (/^session_[A-Za-z0-9]+$/.test(a.id || '')) { const l = el('a', null, 'Open'); l.href = 'https://claude.ai/code/' + a.id; l.target = '_blank'; l.rel = 'noopener'; t.append(document.createElement('br'), l); }
+    d.append(t); box.append(d);
+  });
+}
+
+function setChip(id, cls) { const c = $(id); c.classList.remove('ok', 'warn', 'bad'); if (cls) c.classList.add(cls); }
+
+/* ---------- screens / flick ---------- */
+const screens = [...document.querySelectorAll('.screen')];
+const LABELS = ['CORE', 'PIPELINE', 'MONEY', 'AGENTS', 'MAC'];
+let cur = Math.min(screens.length - 1, Math.max(0, store.get('jarvis.screen', 0)));
+let drag = 0;
+const nav = $('nav');
+LABELS.forEach((l, i) => { const b = el('button', null, l); b.onclick = () => go(i); nav.append(b); });
+function layout() {
+  const w = $('stage').clientWidth || 1;
+  screens.forEach((s, k) => {
+    const d = k - cur + drag / w;
+    s.style.transform = `translateX(${d * 100}%) rotateY(${d * -28}deg) scale(${1 - Math.min(.18, Math.abs(d) * .12)})`;
+    s.style.opacity = String(Math.max(0, 1 - Math.abs(d) * .7));
+    s.style.pointerEvents = k === cur ? 'auto' : 'none';
+    s.setAttribute('aria-hidden', k === cur ? 'false' : 'true');
+    s.style.transition = drag ? 'none' : '';
+  });
+  [...nav.children].forEach((b, i) => b.setAttribute('aria-current', i === cur ? 'true' : 'false'));
+}
+function go(i) { cur = (i + screens.length) % screens.length; drag = 0; store.set('jarvis.screen', cur); layout(); }
+layout(); addEventListener('resize', layout);
+const stage = $('stage');
+let px = null, py = null, lock = null;
+stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button,a,input,table')) return; px = e.clientX; py = e.clientY; lock = null; });
+addEventListener('pointermove', (e) => {
+  if (px === null) return;
+  const dx = e.clientX - px, dy = e.clientY - py;
+  if (!lock) { if (Math.abs(dx) > 10) lock = 'x'; else if (Math.abs(dy) > 10) { px = null; return; } }
+  if (lock === 'x') { drag = dx; layout(); }
+});
+addEventListener('pointerup', () => { if (px === null) return; const d = drag; px = null; drag = 0; if (d < -70) go(cur + 1); else if (d > 70) go(cur - 1); else layout(); });
+let wheelAcc = 0, wheelT = 0;
+stage.addEventListener('wheel', (e) => {
+  if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+  e.preventDefault(); const now = performance.now(); if (now - wheelT < 600) return;
+  wheelAcc += e.deltaX; if (Math.abs(wheelAcc) > 90) { go(cur + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelT = now; }
+}, { passive: false });
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input,textarea')) return;
+  if (e.key === 'ArrowRight') go(cur + 1); else if (e.key === 'ArrowLeft') go(cur - 1);
+  else if (/^[1-5]$/.test(e.key)) go(Number(e.key) - 1);
+  else if (e.key === '`') { e.preventDefault(); startMic(); }
+});
+
+/* ---------- Jarvis state ---------- */
+function setState(s, label) {
+  document.body.classList.remove('think', 'listen', 'speak');
+  if (s) document.body.classList.add(s);
+  $('r-state').textContent = label || 'STANDING BY';
+  $('j-status').textContent = { think: 'Thinking…', listen: 'Listening…', speak: 'Speaking…' }[s] || 'Online';
+}
+
+/* ---------- transcript ---------- */
+const logBox = $('log');
+let turns = store.get('jarvis.turns', []);
+function addMsg(who, text) {
+  const m = el('div', 'msg ' + who); if (who !== 'sys') m.append(el('small', null, who === 'j' ? 'JARVIS' : 'YOU'));
+  const body = el('span', null, text); m.append(body); logBox.append(m); logBox.scrollTop = logBox.scrollHeight; return body;
+}
+turns.slice(-8).forEach((t) => addMsg(t.role === 'user' ? 'u' : 'j', t.content));
+if (!turns.length) addMsg('j', 'Good to see you. Systems are coming online. Say "brief me" whenever you\'re ready.');
+
+function approval(title, detail, okLabel) {
+  return new Promise((resolve) => {
+    const c = el('div', 'card'); c.append(el('b', null, title));
+    const code = el('code', null, detail); c.append(code);
+    const row = el('div', 'row'); const ok = el('button', 'btn am', okLabel || 'Approve'); const no = el('button', 'btn', 'Deny');
+    row.append(ok, no); c.append(row); logBox.append(c); logBox.scrollTop = logBox.scrollHeight;
+    const done = (v) => { clearTimeout(t); row.replaceChildren(el('span', null, v ? 'Approved' : 'Denied')); resolve(v); };
+    const t = setTimeout(() => done(false), 140000);
+    ok.onclick = () => done(true); no.onclick = () => done(false);
+  });
+}
+
+/* ---------- connectors ---------- */
+const payload = (res) => { let p = res && (res.payload ?? res); if (typeof p === 'string') { try { p = JSON.parse(p); } catch {} } return p; };
+const call = async (server, tool, input) => payload(await mcp.callTool(server, tool, input));
+const errCopy = (e, server) => ({
+  needs_reauth: `Reconnect ${server} in claude.ai Settings, Connectors.`,
+  server_not_connected: `Add ${server} in claude.ai Settings, Connectors.`,
+  not_in_manifest: `${server} is turned off for Jarvis.`,
+  selection_required: `Pick which ${server} connector Jarvis should use.`,
+  blocked_by_policy: `${server} is blocked by your organization.`,
+  approval_required: `${server} needs your approval.`
+}[e && e.code] || `${server} hiccuped. Will retry on the next refresh.`);
+
+function watchNotion(key, args, every) {
+  mcp.watchTool('Notion', 'notion-query-data-sources', { data: args }, (ev) => {
+    if (ev.type === 'data') { const p = payload(ev.result); S[key] = (p && p.results) || []; S.ok[key] = true; S.ok[key + 'Err'] = null; }
+    else { const keep = ['server_unavailable', 'upstream_error', 'rate_limited'].includes(ev.error.code); if (!keep) { S[key] = []; S.ok[key] = false; } S.ok[key + 'Err'] = errCopy(ev.error, 'Notion'); }
+    render(); notifyNew();
+  }, { refetchInterval: every });
+}
+
+async function boot() {
+  [mcp, sample, tts, dict, desktop] = await Promise.all(['mcp', 'sample', 'tts', 'dictation', 'desktop'].map((n) => window.claude.use(n).catch(() => null)));
+  if (mcp) {
+    watchNotion('accounts', { mode: 'rows', data_source_url: DS.accounts, limit: 100 }, 300000);
+    watchNotion('pipeline', { mode: 'rows', data_source_url: DS.tracker, limit: 100, filter: { type: 'group', operator: 'or', filters: [{ type: 'property', property: 'Status', propertyType: 'select', operator: 'enum_is', value: STAGES.map((s) => ({ type: 'exact', value: s[0] })) }] } }, 300000);
+    watchNotion('jarvis', { mode: 'rows', data_source_url: DS.jarvis, limit: 60, sort: [{ property: 'Date', direction: 'descending' }] }, 120000);
+    mcp.watchTool('Claude Code Remote', 'list_sessions', { limit: 8, mine: true }, (ev) => {
+      if (ev.type === 'data') { const p = payload(ev.result); S.agents = (p && (p.ccr?.data || p.data || p.sessions)) || []; S.ok.agents = true; setChip('c-agents', 'ok'); }
+      else { S.ok.agentsErr = errCopy(ev.error, 'Claude Code Remote'); setChip('c-agents', 'warn'); }
+      renderAgents();
+    }, { refetchInterval: 120000 });
+  } else {
+    S.ok.accountsErr = S.ok.pipelineErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.';
+    S.ok.agentsErr = 'Agents show up once Jarvis runs inside Claude.';
+    render();
+  }
+  if (!sample) addMsg('sys', 'Jarvis\'s brain needs Claude. Open this page in the Claude app or claude.ai.');
+  if (!dict) $('mic').hidden = true;
+  if (!tts) $('voice').hidden = true;
+  setupDesktop();
+}
+
+/* ---------- desktop ---------- */
+function drawIcon(size = 256) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d'), h = size / 2;
+  const bg = x.createRadialGradient(h, h, 10, h, h, h); bg.addColorStop(0, '#0b3550'); bg.addColorStop(1, '#02060d');
+  x.fillStyle = bg; x.beginPath(); x.roundRect(0, 0, size, size, size * .22); x.fill();
+  x.strokeStyle = '#3fe0ff'; x.shadowColor = '#3fe0ff'; x.shadowBlur = 18;
+  [[.38, 10, [size * .9, size * .25]], [.3, 5, [size * .3, size * .12]], [.2, 4, []]].forEach(([r, w, d]) => { x.lineWidth = w; x.setLineDash(d); x.beginPath(); x.arc(h, h, size * r, 0, Math.PI * 2); x.stroke(); });
+  x.setLineDash([]); x.fillStyle = '#c9f8ff'; x.beginPath(); x.arc(h, h, size * .1, 0, Math.PI * 2); x.fill();
+  return c.toDataURL('image/png');
+}
+function drawTray() {
+  const c = document.createElement('canvas'); c.width = c.height = 36; const x = c.getContext('2d');
+  x.strokeStyle = '#000'; x.lineWidth = 3; x.beginPath(); x.arc(18, 18, 14, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 2; x.setLineDash([6, 4]); x.beginPath(); x.arc(18, 18, 8, 0, Math.PI * 2); x.stroke();
+  x.setLineDash([]); x.fillStyle = '#000'; x.beginPath(); x.arc(18, 18, 3.5, 0, Math.PI * 2); x.fill();
+  return c.toDataURL('image/png');
+}
+async function setupDesktop() {
+  if (!desktop) { setChip('c-mac', ''); return; }
+  if (!desktop.fs) {
+    setChip('c-mac', '');
+    try { if ((await desktop.install.state()) === 'available') { const b = $('install'); b.hidden = false; b.onclick = () => desktop.install.request().catch(() => {}); } } catch {}
+    return;
+  }
+  $('bar').classList.add('mac');
+  desktop.app.dock.setIcon(drawIcon()).catch(() => {});
+  desktop.window.setOptions({ titleBarStyle: 'hiddenInset', dragHeight: 48, backgroundColor: '#02060d', width: 1320, height: 840, minWidth: 420, minHeight: 600 }).catch(() => {});
+  const st = await desktop.permissions.state().catch(() => ({}));
+  setChip('c-mac', st['full-access'] === 'granted' ? 'ok' : 'warn');
+  const need = ['shortcuts', 'menu-bar', 'notifications'].filter((p) => st[p] === 'prompt');
+  if (need.length) { const b = $('powers'); b.hidden = false; b.onclick = async () => { b.hidden = true; await desktop.permissions.request(need).catch(() => {}); powers(); }; }
+  powers();
+}
+async function powers() {
+  const st = await desktop.permissions.state().catch(() => ({}));
+  if (st.shortcuts === 'granted') desktop.globalShortcut.register('Alt+Shift+J', () => { desktop.window.show(); $('q').focus(); addMsg('sys', 'Summoned. Press ` to talk or type.'); }).catch(() => {});
+  if (st['menu-bar'] === 'granted') desktop.tray.set({ icon: drawTray(), toolTip: 'Jarvis · Alt+Shift+J', menu: [
+    { label: 'Show Jarvis', click: () => desktop.window.show() },
+    { label: 'Brief me', click: () => { desktop.window.show(); ask('Brief me.'); } },
+    { label: 'What needs me?', click: () => { desktop.window.show(); go(0); } }
+  ] }).catch(() => {});
+}
+let lastNeeds = store.get('jarvis.needsSeen', null);
+function notifyNew() {
+  if (!S.ok.jarvis) return;
+  const ids = needs().map((r) => r.url);
+  if (lastNeeds && desktop?.notification) {
+    const fresh = needs().filter((r) => !lastNeeds.includes(r.url));
+    if (fresh.length) desktop.notification.show({ body: `Jarvis: ${fresh.length} new item${fresh.length > 1 ? 's' : ''} need you. ${un(fresh[0].Entry)}`.slice(0, 300) }).catch(() => {});
+  }
+  lastNeeds = ids; store.set('jarvis.needsSeen', ids);
+}
+function badge() { if (desktop?.app) desktop.app.dock.setBadge(needs().length ? String(needs().length) : '').catch(() => {}); }
+
+/* ---------- Jarvis brain ---------- */
+const RULES = `You are JARVIS, the executive assistant and second brain for Ryan Langseth, who runs OMNI Vehicle Management (Diamond Xpress LLC dba OMNI), a solo fleet washing and detailing business based in Elizabethtown KY and moving into Louisville. Main focus: B2B fleets (trucking, delivery, passenger and premium like country clubs, trades). Goals: $10,000/mo recurring by Dec 31 2026; $4.5k feels stable; $6.5k means hire a commission salesman; $20k/mo in 12 months running without Ryan on the tools.
+
+Voice: like Jarvis from Iron Man. Calm, sharp, quietly witty, unflappable. Use "sir" rarely. Talk like a text from a sharp friend: short, direct, plain. Under 80 words unless asked for more. Give honest pushback and outside the box ideas. Plain text only, no markdown headings or bold; short dash-free bullets are fine. Your replies may be read aloud.
+
+You take responsibility for outcomes: point out what is slipping and propose the fix. Never invent facts, names, numbers or history. If you don't know, say so or look it up with a tool.
+
+Hard rules: never text anyone. Never send email; only create Gmail drafts for Ryan to review and send. Never spend money or sign anything. No free service credits ever. No "book now pay later". In cold outreach: no dollar figures, no dashes, no links, never say "figured", never claim OMNI brings its own water. Proposals and pricing are Ryan's call: draft, don't decide. Fleet rates have been too low; target $190 per labor hour, $150 floor.
+
+Tools: use search_tracker for lead details, search_gmail and read_email_thread for email, draft_email for drafts, log_to_jarvis to record meaningful actions, decisions, ideas and next steps in Notion, run_mac_command for things on Ryan's MacBook (macOS zsh; prefer read-only commands, never delete without saying exactly what; Ryan approves every command), dispatch_agent for big multi-step jobs that take minutes (research, building a document, a batch of drafts). Ryan approves each dispatch.
+
+A "brief" means: scoreboard vs $10k and days left, the 3 money moves for today (biggest monthly value first, each with the one action), one outside the box idea, one line of pushback if warranted. Under 120 words.`;
+
+function snapshot() {
+  const m = money();
+  return JSON.stringify({
+    today: isoToday(), days_left_to_goal: daysLeft(), money: m,
+    needs_ryan: needs().slice(0, 12).map((r) => ({ entry: un(r.Entry), company: un(r.Company), type: r.Type, impact_mo: r['Impact $/mo'] ?? null, detail: un(r.Detail).slice(0, 200) })),
+    pipeline: engaged().slice(0, 40).map((r) => ({ company: un(r.Company), stage: STAGE[r.Status], area: un(r.Area), last_touch: r['date:Last touch:start'] || null, next_touch: r['date:Next touch:start'] || null, contact: un(r.Contact).slice(0, 80), notes: un(r.Notes).slice(0, 240) })),
+    accounts: S.accounts.map((r) => ({ account: un(r.Account), status: r.Status, monthly: r['Monthly $'] ?? null, vehicles: r.Vehicles ?? null })),
+    recent_log: S.jarvis.slice(0, 10).map((r) => ({ date: r['date:Date:start'], entry: un(r.Entry), type: r.Type, status: r.Status }))
+  });
+}
+
+const consoleBox = $('console');
+const conLine = (t, cls) => { const s = el('span', cls, t + '\n'); consoleBox.append(s); consoleBox.scrollTop = consoleBox.scrollHeight; };
+let envId = null;
+
+const TOOLS = [
+  { name: 'search_tracker', description: 'Look up leads in the OMNI Outreach Tracker by company name. Returns up to 5 rows with status, contact, email, phone, touches and full notes.',
+    inputSchema: { type: 'object', properties: { company: { type: 'string' } }, required: ['company'] },
+    execute: async ({ company }) => { const p = await call('Notion', 'notion-query-data-sources', { data: { mode: 'rows', data_source_url: DS.tracker, limit: 5, filter: { type: 'group', operator: 'and', filters: [{ type: 'property', property: 'Company', propertyType: 'title', operator: 'string_contains', value: { type: 'exact', value: String(company) } }] } } });
+      return (p.results || []).map((r) => ({ company: un(r.Company), status: r.Status, contact: un(r.Contact), email: r.Email, phone: r.Phone, area: un(r.Area), touch: r['Touch #'], last_touch: r['date:Last touch:start'], next_touch: r['date:Next touch:start'], thread_subject: r['Thread subject'], notes: un(r.Notes).slice(0, 1500) })); } },
+  { name: 'search_gmail', description: 'Search Ryan\'s Gmail with Gmail query syntax (e.g. "from:kenway.net newer_than:7d", "in:inbox is:unread"). Returns thread ids, subjects, senders, dates and snippets of the latest message.',
+    inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] },
+    execute: async ({ query }) => { setChip('c-gmail', 'warn'); const p = await call('Gmail', 'search_threads', { query: String(query), pageSize: 8, view: 'THREAD_VIEW_SUMMARY' }); setChip('c-gmail', 'ok');
+      return (p.threads || []).map((t) => { const m = (t.messages || [])[0] || {}; return { threadId: t.id, messages: t.messageCount, subject: m.subject, from: m.sender, date: m.date, snippet: String(m.snippet || '').slice(0, 220), messageId: m.id }; }); } },
+  { name: 'read_email_thread', description: 'Read a Gmail thread in full (plain text, each message trimmed). Use the threadId from search_gmail. Returns messages with ids, senders, dates and bodies.',
+    inputSchema: { type: 'object', properties: { threadId: { type: 'string' } }, required: ['threadId'] },
+    execute: async ({ threadId }) => { const p = await call('Gmail', 'get_thread', { threadId: String(threadId), messageFormat: 'PLAIN_TEXT' });
+      return (p.messages || []).slice(-6).map((m) => ({ id: m.id, from: m.sender, date: m.date, subject: m.subject, body: String(m.plaintextBody || m.snippet || '').slice(0, 1800) })); } },
+  { name: 'draft_email', description: 'Create a Gmail DRAFT (never sends). Plain text body, no markdown. To reply in a thread, pass replyToMessageId from read_email_thread. Returns the draft id and link.',
+    inputSchema: { type: 'object', properties: { to: { type: 'array', items: { type: 'string' } }, subject: { type: 'string' }, body: { type: 'string' }, replyToMessageId: { type: 'string' } }, required: ['body'] },
+    execute: async (i) => { const args = { body: String(i.body), includeSignature: true }; if (Array.isArray(i.to)) args.to = i.to.map(String); if (i.subject) args.subject = String(i.subject); if (i.replyToMessageId) args.replyToMessageId = String(i.replyToMessageId);
+      const p = await call('Gmail', 'create_draft', args); setChip('c-gmail', 'ok'); addMsg('sys', `Draft saved in Gmail${args.subject ? ': ' + args.subject : ''}.`); return { draftId: p.id, link: p.viewUrl }; } },
+  { name: 'log_to_jarvis', description: 'Add a row to the Jarvis Log in Notion (shows on the dashboard). type: Action, Win, Next step, Idea, Risk or Decision. status: Open, Needs Ryan, Done.',
+    inputSchema: { type: 'object', properties: { entry: { type: 'string' }, type: { type: 'string' }, status: { type: 'string' }, company: { type: 'string' }, impact_per_month: { type: 'number' }, detail: { type: 'string' } }, required: ['entry', 'type'] },
+    execute: async (i) => { const props = { Entry: String(i.entry).slice(0, 200), 'date:Date:start': isoToday(), Run: 'Ad hoc', Type: ['Action', 'Win', 'Next step', 'Idea', 'Risk', 'Decision'].includes(i.type) ? i.type : 'Action', Status: ['Open', 'Needs Ryan', 'Done'].includes(i.status) ? i.status : 'Open' };
+      if (i.company) props.Company = String(i.company); if (i.detail) props.Detail = String(i.detail).slice(0, 1800); if (Number(i.impact_per_month)) props['Impact $/mo'] = Number(i.impact_per_month);
+      await call('Notion', 'notion-create-pages', { parent: { data_source_id: DS.jarvis.replace('collection://', '') }, pages: [{ properties: props }] });
+      mcp.invalidate('Notion', 'notion-query-data-sources').catch(() => {}); return 'Logged.'; } },
+  { name: 'run_mac_command', description: 'Run one shell command on Ryan\'s MacBook (zsh). Ryan sees it and must press Approve first. Returns stdout and stderr (trimmed). Only works in the installed Jarvis desktop app.',
+    inputSchema: { type: 'object', properties: { command: { type: 'string' }, reason: { type: 'string' } }, required: ['command', 'reason'] },
+    execute: async ({ command, reason }) => {
+      if (!desktop?.childProcess) throw new Error('Mac control only works in the installed Jarvis desktop app. Tell Ryan to install it from the Claude desktop app.');
+      const ok = await approval('RUN ON YOUR MAC · ' + String(reason).slice(0, 120), String(command), 'Run it');
+      if (!ok) return 'Ryan denied this command. Do not retry it.';
+      const st = await desktop.permissions.state('full-access').catch(() => 'unavailable');
+      if (st === 'prompt') await desktop.permissions.request(['full-access']).catch(() => {});
+      conLine('$ ' + command, 'cmd');
+      try { const r = await desktop.childProcess.exec(String(command), { timeout: 60000 }); setChip('c-mac', 'ok');
+        conLine((r.stdout || '').slice(0, 4000)); if (r.stderr) conLine(r.stderr.slice(0, 1500), 'err');
+        return { code: r.code, stdout: (r.stdout || '').slice(0, 6000), stderr: (r.stderr || '').slice(0, 1500), truncated: r.truncated };
+      } catch (e) { conLine(String(e.message || e), 'err'); throw new Error(String(e.message || e)); } } },
+  { name: 'dispatch_agent', description: 'Hand a big multi-step job to a Claude agent that runs in the cloud for minutes with Ryan\'s connectors (Notion, Gmail, Drive). Write the task as a complete standalone brief. Ryan approves first. Returns the agent link.',
+    inputSchema: { type: 'object', properties: { title: { type: 'string' }, task: { type: 'string' } }, required: ['title', 'task'] },
+    execute: async ({ title, task }) => {
+      const ok = await approval('DISPATCH AGENT · ' + String(title).slice(0, 80), String(task).slice(0, 1200), 'Launch');
+      if (!ok) return 'Ryan declined the dispatch.';
+      if (!envId) { const e = await call('Claude Code Remote', 'list_environments', {}); const envs = e.environments || []; envId = (envs.find((x) => x.kind === 'remote_cowork') || envs.find((x) => x.state === 'active') || envs[0] || {}).environment_id; }
+      const p = await call('Claude Code Remote', 'create_session', { environment_id: envId, title: String(title).slice(0, 120), prompt: String(task) + '\n\nContext: you work for Ryan at OMNI Vehicle Management. Read the Notion page "OMNI HQ" first and follow its rules. Never text anyone, never send email (drafts only). Log what you did in the Jarvis Log in Notion.' });
+      const id = (JSON.stringify(p).match(/session_[A-Za-z0-9]+/) || [])[0];
+      mcp.invalidate('Claude Code Remote', 'list_sessions').catch(() => {}); go(3);
+      return id ? { session: id, link: 'https://claude.ai/code/' + id } : p; } }
+];
+
+let ctl = null, busy = false;
+async function ask(text) {
+  text = String(text || '').trim(); if (!text || busy) return;
+  if (!sample) { addMsg('sys', 'Jarvis\'s brain needs Claude. Open this in the Claude app.'); return; }
+  busy = true; addMsg('u', text);
+  turns.push({ role: 'user', content: text }); turns = turns.slice(-16); while (turns.length && turns[0].role !== 'user') turns.shift();
+  const out = addMsg('j', '…'); setState('think', 'PROCESSING');
+  ctl = new AbortController();
+  const lim = await sample.limits().catch(() => null);
+  try {
+    const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (from Notion, just now):\n' + snapshot() + '\n\nThe conversation with Ryan follows.' }, ...turns];
+    const { text: reply } = await sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', effort: 'low', tools: lim?.tools ? TOOLS : undefined, onText: ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); } });
+    out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns);
+    speak(reply);
+  } catch (e) {
+    out.textContent = e.text || ({ not_granted: 'I need permission to use Claude. Allow it and ask again.', rate_limited: 'Usage limit hit. Give it a minute.', cancelled: '(stopped)', refused: 'I can\'t help with that one.' }[e.code] || 'Lost the connection to Claude. Try that again.');
+    turns.pop(); setState(null);
+  } finally { busy = false; if (!document.body.classList.contains('speak')) setState(null); }
+}
+
+let voiceOn = store.get('jarvis.voice', true);
+const vb = $('voice');
+const syncVoice = () => { vb.textContent = voiceOn ? 'Voice on' : 'Voice off'; vb.setAttribute('aria-pressed', String(voiceOn)); };
+syncVoice(); vb.onclick = () => { voiceOn = !voiceOn; store.set('jarvis.voice', voiceOn); syncVoice(); if (!voiceOn) tts?.stop?.(); };
+async function speak(text) {
+  if (!tts || !voiceOn) return;
+  const clean = text.replace(/https?:\S+/g, 'the link').replace(/[*#_`>]/g, '').slice(0, 900);
+  setState('speak', 'SPEAKING');
+  try { await tts.speak(clean, { voice: 'glassy', rate: 1.05, language: 'en' }); } catch {} finally { setState(null); }
+}
+
+/* ---------- voice in ---------- */
+let listening = false, finalText = '';
+function startMic() {
+  if (!dict) return;
+  if (listening) { dict.stop().catch(() => {}); return; }
+  finalText = ''; tts?.stop?.();
+  dict.start().catch((e) => { if (e?.code === 'not_granted') $('mic').hidden = true; });
+}
+if (true) {
+  const wire = () => {
+    if (!dict) return;
+    dict.onPartial(({ text }) => { $('q').value = (finalText + ' ' + text).trim(); });
+    dict.onFinal(({ text }) => { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; });
+    dict.onState(({ state }) => {
+      listening = state === 'listening'; $('mic').classList.toggle('on', listening);
+      if (listening) setState('listen', 'LISTENING');
+      else { setState(null); const t = $('q').value.trim(); if (t) { $('q').value = ''; ask(t); } }
+    });
+  };
+  const waitDict = setInterval(() => { if (dict) { clearInterval(waitDict); wire(); } }, 300);
+  setTimeout(() => clearInterval(waitDict), 15000);
+}
+$('mic').onclick = startMic;
+$('form').addEventListener('submit', (e) => { e.preventDefault(); const t = $('q').value; $('q').value = ''; ask(t); });
+document.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.ask)));
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && busy) ctl?.abort(); });
+
+render();
+if (window.claude?.use) boot(); else { S.ok.accountsErr = S.ok.pipelineErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.'; render(); }
+}
+</script>
