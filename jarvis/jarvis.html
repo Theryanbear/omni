@@ -80,10 +80,22 @@ body.think .pulse,body.speak .pulse{animation:pulse 1.1s ease-in-out infinite}
 .spark{position:absolute;width:4px;height:4px;border-radius:50%;background:#e8fdff;box-shadow:0 0 8px #3fe0ff,0 0 3px #fff;animation:twinkle 2.6s ease-in-out infinite;pointer-events:none}
 @keyframes twinkle{0%,100%{opacity:0;transform:scale(.4)}45%{opacity:1;transform:scale(1)}}
 .orbcv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
-.zap{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.hud{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.hud text{font-family:Oxanium,sans-serif;fill:#bff6ff}
+.hud .g{cursor:pointer;outline:none}
+.hud .g:hover .gtrack,.hud .g:focus-visible .gtrack{stroke-opacity:.4}
+.hud .g:focus-visible .gouter{stroke:#fff;stroke-opacity:1}
+.hud .trace{animation:flow 2.2s linear infinite;stroke-dasharray:2 10}
+.hudlist{position:absolute;padding-right:14px;border-right:2px solid rgba(63,224,255,.7);text-align:right;z-index:2}
+.hudlist h3{margin:0 0 6px;font:600 11px Oxanium,sans-serif;letter-spacing:.24em;color:var(--cy)}
+.hudlist ul{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.hudlist li{font:500 14px/1.25 Rajdhani,sans-serif;color:var(--ink);position:relative}
+.hudlist li small{display:block;color:var(--am);font:500 11px Oxanium,sans-serif;letter-spacing:.06em}
+.hudlist li::after{content:"";position:absolute;right:-19px;top:6px;width:8px;height:8px;background:var(--cy);box-shadow:0 0 8px var(--cy)}
+.hudlist li.rk::after{background:var(--rd);box-shadow:0 0 8px var(--rd)}
 .frag .lab{font:600 11px Oxanium,sans-serif;letter-spacing:.2em;color:var(--cy);white-space:nowrap;text-shadow:0 0 8px #000}
 .frag .met{font:500 13px Rajdhani,sans-serif;color:var(--ink);white-space:nowrap;background:rgba(2,6,13,.6);padding:0 6px;border-radius:4px;margin-top:-4px}
-.sun{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:clamp(150px,24vh,200px);aspect-ratio:1;border-radius:50%;border:0;background:radial-gradient(circle,rgba(63,224,255,.4),rgba(8,40,60,.45) 55%,transparent 72%);cursor:zoom-in;color:var(--ink);padding:0;z-index:3}
+.sun{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:160px;aspect-ratio:1;border-radius:50%;border:0;background:none;cursor:zoom-in;color:var(--ink);padding:0;z-index:3}
 .sun b,.sun small,.sun span{text-shadow:0 0 6px #00243a,0 0 14px #00243a,0 0 2px #000;position:relative}
 .sun svg{z-index:1}
 .crystal b{display:none}
@@ -212,7 +224,7 @@ label.f{display:grid;gap:4px;font-size:13px;color:var(--mute)}
 details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;letter-spacing:.12em;margin:4px 0}
 @media(max-width:1180px){.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid3>.stack:last-child{grid-column:1/-1}}
 @media(max-width:980px){body{overflow:auto}.app{height:auto;min-height:100%}.main{grid-template-columns:minmax(0,1fr)}.stage{height:84vh;min-height:580px}.comms{border-left:0;border-top:1px solid var(--line);height:auto;min-height:380px}.log{max-height:50vh}.core{grid-template-columns:minmax(0,1fr)}.reactor{max-width:400px}.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.grid3>.stack:last-child{grid-column:auto}.syshud .panel:nth-child(n+2){display:none}}
-@media(max-width:600px){.sun{width:96px}.sun small,.sun .sc>span{display:none}.zoomhint{display:none}.frag .lab{font-size:9px;letter-spacing:.08em}.frag .met{display:none}.chips .chip:nth-child(n+3){display:none}.clock{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 8px;letter-spacing:.04em}}
+@media(max-width:600px){.sun small,.sun .sc>span{display:none}.zoomhint{display:none}.frag .lab{font-size:9px;letter-spacing:.08em}.frag .met{display:none}.chips .chip:nth-child(n+3){display:none}.clock{display:none}.gauges{grid-template-columns:minmax(0,1fr)}.nav button{padding:6px 8px;letter-spacing:.04em}}
 @media(prefers-reduced-motion:reduce){.spin,.pulse,.mic.on,.aura,.rays,.swirl,.spark,.bflow,.bglow{animation:none!important}.screen,.arc,.tr i,.sys,.detail{transition:none!important}}
 </style>
 
@@ -237,21 +249,12 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
       <section class="screen" aria-label="System" style="padding-bottom:56px">
         <div class="corewrap" id="corewrap">
           <div class="sys" id="sys">
-            <svg class="beams" id="beams" aria-hidden="true"></svg><canvas class="zap" id="zap" aria-hidden="true"></canvas><div id="frags"></div>
+            <svg class="hud" id="hud" aria-hidden="false"></svg>
             <button class="sun" id="sun" aria-label="Zoom into the core"><canvas class="orbcv" id="suncv" aria-hidden="true"></canvas>
-              <svg viewBox="0 0 200 200" aria-hidden="true">
-                <circle cx="100" cy="100" r="92" fill="none" stroke="#3fe0ff" stroke-opacity=".25" stroke-width="1" stroke-dasharray="2 5" class="spin" style="--d:50s"/>
-                <circle cx="100" cy="100" r="80" fill="none" stroke="#3fe0ff" stroke-opacity=".12" stroke-width="8"/>
-                <circle id="sun-arc" cx="100" cy="100" r="80" fill="none" stroke="#3fe0ff" stroke-width="8" stroke-dasharray="0 503" transform="rotate(-90 100 100)" class="arc"/>
-                <circle cx="100" cy="100" r="66" fill="none" stroke="#3fe0ff" stroke-opacity=".7" stroke-width="2" stroke-dasharray="90 50" class="spin fast rev" style="--d:14s"/>
-              </svg>
-              <span class="sc"><small>RECURRING</small><b id="sun-mrr">$0</b><span id="sun-sub">OF $10K</span></span>
+              <span class="sc"><small>MONTHLY RECURRING</small><b id="sun-mrr">$0</b><span id="sun-sub">OF $10,000</span></span>
             </button>
-            <div class="syshud">
-              <div class="panel"><span>Today's focus</span><b id="hud-focus" style="font-size:16px;font-family:Rajdhani;font-weight:600">Loading…</b></div>
-              <div class="panel" style="text-align:right"><span>Days to Dec 31</span><b id="hud-days">--</b></div>
-            </div>
-            <div class="zoomhint">CLICK A CORE FRAGMENT · CLICK THE CORE TO ZOOM IN · PINCH TO ZOOM</div>
+            <div class="hudlist" id="hudneeds"><h3>NEEDS YOU</h3><ul id="hud-needs"></ul></div>
+            <div class="zoomhint">CLICK A GAUGE · CLICK THE CORE TO ZOOM IN · PINCH TO ZOOM</div>
           </div>
           <div class="detail" id="detail">
             <button class="btn back" id="zoomout">◎ System view</button>
@@ -602,45 +605,116 @@ const PLANETS = [
   { key: 'agents', label: 'AGENTS', screen: 5 }, { key: 'mac', label: 'MAC', screen: 6 }
 ];
 const FR = {};
+const HUD = {};
+const CY = '#3fe0ff';
+function arcPath(cx, cy, r, a0, a1) { const p = (a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)]; const [x0, y0] = p(a0), [x1, y1] = p(a1); return `M${x0},${y0} A${r},${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1},${y1}`; }
 function buildSystem() {
-  const box = $('sys'), W = box.clientWidth || 800, H = box.clientHeight || 600, small = W < 600;
-  const cx = W / 2, cy = H / 2, sunR = (small ? 48 : Math.min(100, Math.max(75, H * .12))), fs = small ? 52 : 76;
-  const rx = Math.min(W / 2 - (small ? 58 : 90), Math.max(sunR + 110, W * .34)), ry = Math.min(H / 2 - (small ? 70 : 95), rx * .78);
-  const svg = $('beams'); svg.replaceChildren(); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  ORBS.length = 0;
-  const sunBox = $('sun').getBoundingClientRect().width || sunR * 2;
-  ORBS.push(new Orb($('suncv'), sunBox * .78, { seed: 1, core: 1, energy: .9, arcs: 1.4 }));
-  zapC = $('zap'); zapC.width = Math.round(W * DPR); zapC.height = Math.round(H * DPR);
-  const defs = sv('defs', {}); svg.append(defs);
-  const fr = $('frags'); fr.replaceChildren();
-  PLANETS.forEach((p, i) => {
-    const ang = -Math.PI / 2 + i * 2 * Math.PI / PLANETS.length + Math.PI / PLANETS.length;
-    const x = cx + rx * Math.cos(ang), y = cy + ry * Math.sin(ang);
-    const sx = cx + sunR * .92 * Math.cos(ang), sy = cy + sunR * .92 * Math.sin(ang);
-    const len = Math.hypot(x - sx, y - sy), ux = (x - sx) / len, uy = (y - sy) / len;
-    const ex = x - ux * fs * .55, ey = y - uy * fs * .55;
-    const bend = (i % 2 ? 1 : -1) * len * .12, mx = (sx + ex) / 2 - uy * bend, my = (sy + ey) / 2 + ux * bend;
-    const d = `M${sx.toFixed(1)},${sy.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
-    const g = sv('linearGradient', { id: 'bg' + i, gradientUnits: 'userSpaceOnUse', x1: sx, y1: sy, x2: ex, y2: ey });
-    g.append(sv('stop', { offset: '0', 'stop-color': '#ffffff', 'stop-opacity': '.95' }), sv('stop', { offset: '.5', 'stop-color': '#3fe0ff', 'stop-opacity': '.6' }), sv('stop', { offset: '1', 'stop-color': '#3fe0ff', 'stop-opacity': '.25' }));
-    defs.append(g);
-    svg.append(sv('path', { d, fill: 'none', stroke: '#3fe0ff', 'stroke-opacity': .14, 'stroke-width': 12, 'stroke-linecap': 'round', class: 'bglow', style: `animation-delay:${-i * .6}s` }));
-    svg.append(sv('path', { d, fill: 'none', stroke: `url(#bg${i})`, 'stroke-width': 1.6 }));
-    svg.append(sv('path', { d, fill: 'none', stroke: '#e6fdff', 'stroke-width': 2.2, 'stroke-linecap': 'round', class: 'bflow', style: `animation-delay:${-i * .23}s` }));
-    svg.append(sv('path', { d, fill: 'none', stroke: '#9ff2ff', 'stroke-width': 3.5, 'stroke-linecap': 'round', class: 'bflow slow', style: `animation-delay:${-i * .41}s`, 'stroke-opacity': .7 }));
-    if (!reduced) for (let k = 0; k < 3; k++) {
-      const c = sv('circle', { r: 2.4, fill: '#ffffff', opacity: .9 }); const am = sv('animateMotion', { dur: (1.8 + (i % 3) * .3) + 's', repeatCount: 'indefinite', begin: (-k * .65 - i * .2) + 's', path: d });
-      c.append(am); svg.append(c);
+  const box = $('sys'), W = box.clientWidth || 900, H = box.clientHeight || 640, wide = W >= 760;
+  const svg = $('hud'); svg.replaceChildren(); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const add = (parent, tag, at) => { const e = sv(tag, at); parent.append(e); return e; };
+  const txt = (parent, x, y, t, at = {}) => { const e = add(parent, 'text', { x, y, 'text-anchor': 'middle', ...at }); e.textContent = t; return e; };
+  // layout
+  const cx = wide ? W * .47 : W / 2, cy = wide ? H * .53 : H * .3;
+  const Rr = wide ? Math.min(W * .2, H * .29) : Math.min(W * .34, H * .2);
+  const gr = wide ? Math.max(40, Math.min(56, W * .052)) : Math.min(40, W * .1);
+  const spots = wide ? {
+    pipeline: [cx - Rr * 1.0, cy - Rr * 1.3], dial: [cx + Rr * 1.0, cy - Rr * 1.3],
+    money: [cx + Rr * 1.62, cy + Rr * .08], outreach: [cx + Rr * 1.3, cy + Rr * 1.12],
+    agents: [cx - Rr * 1.3, cy + Rr * 1.12], mac: [W * .09, H * .8]
+  } : {
+    pipeline: [W * .2, H * .66], dial: [W * .5, H * .66], outreach: [W * .8, H * .66],
+    money: [W * .2, H * .86], agents: [W * .5, H * .86], mac: [W * .8, H * .86]
+  };
+  // date strip
+  if (wide) {
+    const now = new Date(), days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), x0 = W * .04, step = (W * .92) / days;
+    const strip = add(svg, 'g', {});
+    for (let d = 1; d <= days; d++) {
+      const x = x0 + (d - .5) * step, on = d === now.getDate();
+      if (on) add(strip, 'rect', { x: x - step * .42, y: 4, width: step * .84, height: 20, rx: 3, fill: CY, 'fill-opacity': .9 });
+      txt(strip, x, 19, String(d).padStart(2, '0'), { 'font-size': 12, fill: on ? '#02060d' : '#3fe0ff', 'fill-opacity': on ? 1 : (d < now.getDate() ? .35 : .7), 'font-weight': on ? 700 : 400 });
     }
-    const b = el('button', 'frag'); b.type = 'button'; b.style.left = x + 'px'; b.style.top = y + 'px'; b.onclick = () => go(p.screen);
-    const cr = el('span', 'crystal'); cr.style.setProperty('--fs', fs + 'px'); cr.style.setProperty('--dl', (-i * .55) + 's');
-    const cv = el('canvas', 'orbcv'); const ringBox = el('span'); const num = el('b');
-    cr.append(cv, ringBox, num);
-    ORBS.push(new Orb(cv, fs, { seed: i + 2, core: .95, energy: .5 }));
-    const lab = el('span', 'lab', p.label), met = el('span', 'met');
-    b.append(cr, lab, met); fr.append(b);
-    FR[p.key] = { b, ringBox, num, met, fs, beam: { sx, sy, ex, ey } };
+    add(strip, 'line', { x1: x0, y1: 30, x2: x0 + W * .92, y2: 30, stroke: CY, 'stroke-opacity': .25 });
+  }
+  // reactor rings
+  const rg = add(svg, 'g', {});
+  const ticks = add(rg, 'g', { class: 'spin', style: '--d:140s' });
+  for (let i = 0; i < 180; i++) { const a = i * 2 * Math.PI / 180, big = i % 15 === 0, r1 = Rr * (big ? .965 : .985); add(ticks, 'line', { x1: cx + r1 * Math.cos(a), y1: cy + r1 * Math.sin(a), x2: cx + Rr * Math.cos(a), y2: cy + Rr * Math.sin(a), stroke: CY, 'stroke-opacity': big ? .9 : .35, 'stroke-width': big ? 2 : 1 }); }
+  add(rg, 'circle', { cx, cy, r: Rr * 1.06, fill: 'none', stroke: CY, 'stroke-opacity': .18, 'stroke-dasharray': '1 7' });
+  const seg = add(rg, 'g', { class: 'spin rev', style: '--d:70s' });
+  for (let i = 0; i < 8; i++) { const a0 = i * Math.PI / 4 + .06, a1 = (i + 1) * Math.PI / 4 - .06; add(seg, 'path', { d: arcPath(cx, cy, Rr * .9, a0, a1), fill: 'none', stroke: CY, 'stroke-opacity': .55, 'stroke-width': Rr * .05 }); }
+  add(rg, 'circle', { cx, cy, r: Rr * .8, fill: 'none', stroke: CY, 'stroke-opacity': .12, 'stroke-width': Rr * .07 });
+  HUD.mrrArc = add(rg, 'circle', { cx, cy, r: Rr * .8, fill: 'none', stroke: CY, 'stroke-width': Rr * .07, 'stroke-dasharray': `0 ${2 * Math.PI * Rr * .8}`, transform: `rotate(-90 ${cx} ${cy})`, class: 'arc' });
+  HUD.mrrC = 2 * Math.PI * Rr * .8;
+  add(rg, 'path', { d: arcPath(cx, cy, Rr * .8 + Rr * .07, Math.PI * 1.05, Math.PI * 1.32), fill: 'none', stroke: '#ff5468', 'stroke-width': 3, 'stroke-opacity': .85 });
+  add(rg, 'circle', { cx, cy, r: Rr * .7, fill: 'none', stroke: CY, 'stroke-opacity': .5, 'stroke-width': 1.5, 'stroke-dasharray': '22 6 4 6', class: 'spin fast', style: '--d:36s' });
+  add(rg, 'circle', { cx, cy, r: Rr * .62, fill: 'none', stroke: CY, 'stroke-opacity': .25, 'stroke-width': 1 });
+  // money readouts left of reactor (leader lines), wide only
+  HUD.money = [];
+  if (wide) {
+    const lx = cx - Rr * 1.0, labels = ['ACTIVE', 'SIGNED', 'ON THE TABLE'];
+    labels.forEach((l, i) => {
+      const y = cy - Rr * .28 + i * Rr * .26, ex = cx - Math.sqrt(Math.max(0, (Rr * .9) ** 2 - (y - cy) ** 2));
+      add(svg, 'line', { x1: lx - 4, y1: y, x2: ex, y2: y, stroke: CY, 'stroke-opacity': .45 });
+      add(svg, 'circle', { cx: ex, cy: y, r: 2.5, fill: CY });
+      const t = add(svg, 'text', { x: lx - 10, y: y - 5, 'text-anchor': 'end', 'font-size': 11, 'letter-spacing': 2, 'fill-opacity': .7 }); t.textContent = l;
+      HUD.money.push(add(svg, 'text', { x: lx - 10, y: y + 13, 'text-anchor': 'end', 'font-size': 17, fill: i === 2 ? '#ffb547' : '#e6fbff' }));
+    });
+  }
+  // gauges + traces
+  PLANETS.forEach((p, i) => {
+    const [x, y] = spots[p.key]; const r = p.key === 'mac' ? gr * .78 : gr;
+    const ang = Math.atan2(y - cy, x - cx), ex = cx + Rr * 1.07 * Math.cos(ang), ey = cy + Rr * 1.07 * Math.sin(ang);
+    const sx = x - (r + 8) * Math.cos(ang), sy = y - (r + 8) * Math.sin(ang);
+    const midx = wide ? (Math.abs(sx - ex) > Math.abs(sy - ey) ? ex + (sx - ex) * .45 : sx) : sx, midy = wide ? (Math.abs(sx - ex) > Math.abs(sy - ey) ? sy : ey + (sy - ey) * .5) : ey + (sy - ey) * .5;
+    const d = `M${sx},${sy} L${midx},${midy} L${ex},${ey}`;
+    add(svg, 'path', { d, fill: 'none', stroke: CY, 'stroke-opacity': .3, 'stroke-width': 1 });
+    add(svg, 'path', { d, fill: 'none', stroke: '#d8fbff', 'stroke-opacity': .8, 'stroke-width': 1.6, class: 'trace', style: `animation-delay:${-i * .37}s` });
+    add(svg, 'circle', { cx: ex, cy: ey, r: 3, fill: CY });
+    const g = add(svg, 'g', { class: 'g', tabindex: 0, role: 'button' });
+    g.addEventListener('click', () => go(p.screen)); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(p.screen); } });
+    add(g, 'circle', { cx: x, cy: y, r: r + 9, fill: 'rgba(2,10,20,.75)', stroke: CY, 'stroke-opacity': .35, class: 'gouter' });
+    add(g, 'circle', { cx: x, cy: y, r: r + 13, fill: 'none', stroke: CY, 'stroke-opacity': .2, 'stroke-dasharray': '2 6', class: 'spin', style: `--d:${30 + i * 7}s` });
+    add(g, 'circle', { cx: x, cy: y, r, fill: 'none', stroke: CY, 'stroke-opacity': .16, 'stroke-width': 8, class: 'gtrack' });
+    const C = 2 * Math.PI * r;
+    const arc = add(g, 'circle', { cx: x, cy: y, r, fill: 'none', stroke: CY, 'stroke-width': 8, 'stroke-dasharray': `0 ${C}`, transform: `rotate(-90 ${x} ${y})`, class: 'arc' });
+    add(g, 'circle', { cx: x, cy: y, r: r - 11, fill: 'none', stroke: CY, 'stroke-opacity': .45, 'stroke-dasharray': '10 5', class: 'spin rev', style: `--d:${18 + i * 4}s` });
+    txt(g, x, y - r * .3, p.label, { 'font-size': Math.max(8, r * .17), 'letter-spacing': 1.5, 'fill-opacity': .75 });
+    const val = txt(g, x, y + r * .18, '·', { 'font-size': r * .5, fill: '#ffffff' });
+    const sub = txt(g, x, y + r * .48, '', { 'font-size': Math.max(8, r * .17), 'fill-opacity': .7 });
+    const title = add(g, 'title', {}); title.textContent = p.label;
+    FR[p.key] = { arc, C, val, sub, title };
   });
+  // clock gauge (wide)
+  if (wide) {
+    const x = W * .1, y = H * .2, r = gr * 1.05;
+    add(svg, 'circle', { cx: x, cy: y, r: r + 10, fill: 'none', stroke: CY, 'stroke-opacity': .35 });
+    add(svg, 'circle', { cx: x, cy: y, r, fill: 'none', stroke: CY, 'stroke-opacity': .16, 'stroke-width': 6 });
+    HUD.dayArc = add(svg, 'circle', { cx: x, cy: y, r, fill: 'none', stroke: CY, 'stroke-width': 6, 'stroke-dasharray': `0 ${2 * Math.PI * r}`, transform: `rotate(-90 ${x} ${y})`, class: 'arc' });
+    HUD.dayC = 2 * Math.PI * r;
+    HUD.clock = txt(svg, x, y + r * .15, '--:--', { 'font-size': r * .45, fill: '#fff' });
+    HUD.clockSub = txt(svg, x, y + r * .45, '', { 'font-size': 10, 'letter-spacing': 1.5, 'fill-opacity': .7 });
+    txt(svg, x, y - r * .32, 'WORKDAY', { 'font-size': 9, 'letter-spacing': 2, 'fill-opacity': .6 });
+    txt(svg, x, y + r + 26, 'DAYS TO GOAL', { 'font-size': 9, 'letter-spacing': 2, 'fill-opacity': .6 });
+    HUD.days = txt(svg, x, y + r + 48, '--', { 'font-size': 22, fill: '#ff5468' });
+  } else { HUD.clock = HUD.dayArc = HUD.days = null; }
+  // activity bars (wide): dials last 7 days
+  HUD.bars = [];
+  if (false) {
+    const bx0 = cx - Rr * .95, bw = Rr * 1.9, by = H - 34, bh = Math.min(46, H * .07);
+    add(svg, 'line', { x1: bx0, y1: by, x2: bx0 + bw, y2: by, stroke: CY, 'stroke-opacity': .35 });
+    const t = add(svg, 'text', { x: bx0, y: by - bh - 8, 'text-anchor': 'start', 'font-size': 10, 'letter-spacing': 2, 'fill-opacity': .7 }); t.textContent = 'DIALS · LAST 7 DAYS';
+    for (let i = 0; i < 7; i++) { const x = bx0 + (i + .15) * bw / 7, w = bw / 7 * .7; HUD.bars.push({ rect: add(svg, 'rect', { x, y: by - 1, width: w, height: 1, fill: CY, 'fill-opacity': .75 }), lab: txt(svg, x + w / 2, by + 13, '', { 'font-size': 9, 'fill-opacity': .6 }), n: txt(svg, x + w / 2, by - 4, '', { 'font-size': 10 }), by, bh }); }
+    const wm = add(svg, 'text', { x: W * .1, y: H - 22, 'text-anchor': 'middle', 'font-size': 13, 'letter-spacing': 5, 'font-weight': 700, 'fill-opacity': .55 }); wm.textContent = 'OMNI';
+  }
+  // sun (plasma core) + needs list placement
+  const sun = $('sun'), core = Rr * 1.1; sun.style.left = cx + 'px'; sun.style.top = cy + 'px'; sun.style.width = core + 'px';
+  sun.querySelector('.sc').style.marginTop = (Rr * .5) + 'px';
+  const wm = add(svg, 'text', { x: W * .1, y: H - 22, 'text-anchor': 'middle', 'font-size': 13, 'letter-spacing': 5, 'font-weight': 700, 'fill-opacity': .5 }); wm.textContent = wide ? 'OMNI' : '';
+  ORBS.length = 0; ORBS.push(new Orb($('suncv'), Rr * .88, { seed: 1, core: 1, energy: .9, arcs: 1.2 }));
+  zapC = null;
+  const nl = $('hudneeds'); nl.hidden = !wide;
+  if (wide) { nl.style.right = (W * .035) + 'px'; nl.style.top = (H * .1) + 'px'; nl.style.width = Math.min(210, W * .2) + 'px'; }
   renderPlanets();
 }
 function planetData() {
@@ -659,19 +733,27 @@ function planetData() {
 }
 function renderPlanets() {
   const d = planetData();
-  PLANETS.forEach((p) => {
-    const f = FR[p.key]; if (!f) return; const x = d[p.key];
-    const key = `${x.f.toFixed(3)}|${x.center}`;
-    if (f.ringBox.dataset.k !== key) { f.ringBox.dataset.k = key; f.ringBox.replaceChildren(ring(f.fs + 24, x.f, '#bff6ff', { w: 2.5, speed: 16, label: `${p.label}: ${x.met}` })); }
-    f.num.textContent = x.center; f.met.textContent = x.met; const ob = ORBS[PLANETS.indexOf(p) + 1]; if (ob) ob.o.energy = Math.min(1, .25 + x.f); f.b.setAttribute('aria-label', `${p.label}, ${x.met}. Open.`);
-  });
+  PLANETS.forEach((p) => { const f = FR[p.key]; if (!f) return; const x = d[p.key];
+    f.arc.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, x.f)) * f.C} ${f.C}`); f.val.textContent = x.center; f.sub.textContent = x.met; f.title.textContent = `${p.label}: ${x.met}`; });
   const m = money();
   countUp($('sun-mrr'), m.active);
-  $('sun-arc').setAttribute('stroke-dasharray', `${Math.min(1, m.active / GOAL) * 503} 503`);
-  $('hud-days').textContent = String(daysLeft());
-  const nd = needs()[0];
-  $('hud-focus').textContent = nd ? un(nd.Entry) : (S.ok.jarvis ? 'Nothing waiting on you' : 'Connecting…');
+  if (HUD.mrrArc) HUD.mrrArc.setAttribute('stroke-dasharray', `${Math.min(1, m.active / GOAL) * HUD.mrrC} ${HUD.mrrC}`);
+  if (HUD.money?.length) [m.active, m.contracted, m.table].forEach((v, i) => { HUD.money[i].textContent = fmt(v) + '/mo'; });
+  if (HUD.days) HUD.days.textContent = String(daysLeft());
+  hudClock();
+  if (HUD.bars?.length) { const wk = callStats().week, mx = Math.max(1, goalDials(), ...wk.map((w) => w.n)); wk.forEach((w, i) => { const b = HUD.bars[i]; const h = Math.max(1, w.n / mx * b.bh); b.rect.setAttribute('y', b.by - h); b.rect.setAttribute('height', h); b.lab.textContent = w.day.toUpperCase(); b.n.textContent = w.n ? String(w.n) : ''; b.n.setAttribute('y', b.by - h - 4); }); }
+  const ul = $('hud-needs'); if (ul) { ul.replaceChildren(); const nd = needs().slice(0, 6);
+    if (!nd.length) ul.append(el('li', null, S.ok.jarvis ? 'Nothing waiting on you' : 'Connecting…'));
+    nd.forEach((r) => { const li = el('li', r.Type === 'Risk' ? 'rk' : null, un(r.Entry)); if (num(r['Impact $/mo'])) li.append(el('small', null, fmt(r['Impact $/mo']) + '/mo')); ul.append(li); }); }
 }
+function hudClock() {
+  if (!HUD.clock) return; const n = new Date();
+  HUD.clock.textContent = n.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/, '');
+  HUD.clockSub.textContent = n.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+  const mins = n.getHours() * 60 + n.getMinutes(), f = Math.max(0, Math.min(1, (mins - 510) / (1020 - 510)));
+  HUD.dayArc.setAttribute('stroke-dasharray', `${f * HUD.dayC} ${HUD.dayC}`);
+}
+setInterval(hudClock, 15000);
 const corewrap = $('corewrap');
 const zoom = (z) => { corewrap.classList.toggle('zin', z); store.set('jarvis.zoom', z); };
 $('sun').onclick = () => zoom(true); $('zoomout').onclick = () => zoom(false);
@@ -785,7 +867,7 @@ const logBox = $('log');
 let turns = store.get('jarvis.turns', []);
 function addMsg(who, text) { const m = el('div', 'msg ' + (who === 'sys' ? 'sm' : who)); if (who !== 'sys') m.append(el('small', null, who === 'j' ? 'JARVIS' : 'YOU')); const body = el('span', null, text); m.append(body); logBox.append(m); logBox.scrollTop = logBox.scrollHeight; return body; }
 turns.slice(-8).forEach((t) => addMsg(t.role === 'user' ? 'u' : 'j', t.content));
-if (!turns.length) addMsg('j', 'Good to see you. All systems coming online. Click a core fragment, or say "brief me".');
+if (!turns.length) addMsg('j', 'Good to see you. All systems coming online. Click a gauge, or say "brief me".');
 function approval(title, detail, okLabel) {
   return new Promise((resolve) => {
     const c = el('div', 'card'); c.append(el('b', null, title), el('code', null, detail));
