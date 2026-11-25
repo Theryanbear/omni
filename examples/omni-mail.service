@@ -1,0 +1,14 @@
+# /etc/systemd/system/omni-mail.service   then: systemctl enable --now omni-mail
+[Unit]
+Description=OMNI Mail sending worker
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/omni
+ExecStart=/opt/omni/.venv/bin/omni-mail run
+Restart=always
+RestartSec=10
+User=omni
+
+[Install]
+WantedBy=multi-user.target

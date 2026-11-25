@@ -1,0 +1,505 @@
+"""High-level operations shared by the CLI and the MCP server."""
+
+from __future__ import annotations
+
+import csv
+import io
+import json
+import re
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from . import engine
+from .db import get_setting, iso, set_setting, utcnow
+from .render import RenderError
+
+LEAD_COLUMNS = ("email", "first_name", "last_name", "company", "title", "phone", "website", "city")
+LEAD_STATUSES = ("new", "contacted", "replied", "interested", "not_interested", "meeting", "won",
+                 "bounced", "unsubscribed")
+HEADER_ALIASES = {
+    "e-mail": "email", "email address": "email", "work email": "email",
+    "first": "first_name", "firstname": "first_name", "first name": "first_name",
+    "last": "last_name", "lastname": "last_name", "last name": "last_name",
+    "company name": "company", "organization": "company", "business": "company", "business name": "company",
+    "job title": "title", "position": "title", "phone number": "phone", "url": "website", "site": "website",
+}
+EMAIL_OK = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _row(r) -> dict | None:
+    return dict(r) if r is not None else None
+
+
+# ---------------------------------------------------------------- settings
+
+def get_settings(conn) -> dict:
+    return {r["key"]: r["value"] for r in conn.execute("SELECT * FROM settings WHERE key != 'secret'")}
+
+
+def update_setting(conn, key: str, value: str) -> dict:
+    if key == "secret":
+        raise ValueError("secret cannot be changed here")
+    set_setting(conn, key, value)
+    return get_settings(conn)
+
+
+# ---------------------------------------------------------------- mailboxes
+
+PROVIDERS = {
+    "google": {"smtp_host": "smtp.gmail.com", "smtp_port": 587, "imap_host": "imap.gmail.com", "imap_port": 993},
+    "outlook": {"smtp_host": "smtp.office365.com", "smtp_port": 587, "imap_host": "outlook.office365.com",
+                "imap_port": 993},
+    "zoho": {"smtp_host": "smtp.zoho.com", "smtp_port": 587, "imap_host": "imap.zoho.com", "imap_port": 993},
+}
+
+
+def add_mailbox(conn, email: str, from_name: str, password_env: str, provider: str = "google",
+                smtp_host: str = "", smtp_port: int = 0, imap_host: str = "", imap_port: int = 0,
+                smtp_user: str = "", daily_limit: int = 30, warmup_start: int = 10, warmup_increment: int = 3,
+                min_gap_seconds: int = 120, max_gap_seconds: int = 420, signature: str = "") -> dict:
+    preset = PROVIDERS.get(provider, {})
+    vals = dict(
+        email=email.strip().lower(), from_name=from_name, password_env=password_env,
+        smtp_host=smtp_host or preset.get("smtp_host", ""), smtp_port=smtp_port or preset.get("smtp_port", 587),
+        imap_host=imap_host or preset.get("imap_host", ""), imap_port=imap_port or preset.get("imap_port", 993),
+        smtp_user=smtp_user or email.strip().lower(), daily_limit=daily_limit, warmup_start=warmup_start,
+        warmup_increment=warmup_increment, min_gap_seconds=min_gap_seconds, max_gap_seconds=max_gap_seconds,
+        signature=signature, created_at=iso(utcnow()),
+    )
+    if not vals["smtp_host"]:
+        raise ValueError("smtp_host required (or provider = google|outlook|zoho)")
+    if not re.fullmatch(r"[A-Z_][A-Z0-9_]*", password_env):
+        raise ValueError("password_env must be an ENV_VAR_NAME, not the password itself")
+    cols = ",".join(vals)
+    conn.execute(f"INSERT INTO mailboxes ({cols}) VALUES ({','.join('?' * len(vals))}) "
+                 f"ON CONFLICT(email) DO UPDATE SET " +
+                 ",".join(f"{k}=excluded.{k}" for k in vals if k != "created_at"), list(vals.values()))
+    return list_mailboxes(conn, email)[0]
+
+
+def update_mailbox(conn, email: str, **fields) -> dict:
+    allowed = {"from_name", "daily_limit", "warmup_start", "warmup_increment", "min_gap_seconds",
+               "max_gap_seconds", "signature", "active", "password_env", "smtp_host", "smtp_port",
+               "imap_host", "imap_port", "smtp_user"}
+    fields = {k: v for k, v in fields.items() if v is not None}
+    bad = set(fields) - allowed
+    if bad:
+        raise ValueError(f"cannot update: {sorted(bad)}")
+    if fields:
+        conn.execute(f"UPDATE mailboxes SET {','.join(f'{k}=?' for k in fields)} WHERE email=?",
+                     [*fields.values(), email.lower()])
+    return list_mailboxes(conn, email)[0]
+
+
+def list_mailboxes(conn, email: str | None = None) -> list[dict]:
+    now = utcnow()
+    q = "SELECT * FROM mailboxes" + (" WHERE email=?" if email else "") + " ORDER BY id"
+    out = []
+    for m in conn.execute(q, (email.lower(),) if email else ()):
+        d = dict(m)
+        d["sent_today"] = engine.mailbox_sent_today(conn, m["id"], now)
+        d["limit_today"] = engine.mailbox_effective_limit(m, now)
+        out.append(d)
+    if email and not out:
+        raise ValueError(f"no mailbox {email}")
+    return out
+
+
+# ---------------------------------------------------------------- leads
+
+def _normalize_lead(raw: dict) -> dict:
+    lead: dict = {}
+    custom: dict = {}
+    for k, v in raw.items():
+        if k is None:
+            continue
+        key = k.strip().lower()
+        key = HEADER_ALIASES.get(key, key.replace(" ", "_"))
+        val = "" if v is None else str(v).strip()
+        if key in LEAD_COLUMNS:
+            lead[key] = val
+        elif key in ("tags", "notes"):
+            lead[key] = val
+        elif key == "custom" and isinstance(v, dict):
+            custom.update(v)
+        elif val:
+            custom[key] = val
+    if "first_name" not in lead and raw.get("name"):
+        parts = str(raw["name"]).strip().split(" ", 1)
+        lead["first_name"] = parts[0]
+        lead["last_name"] = parts[1] if len(parts) > 1 else ""
+        custom.pop("name", None)
+    lead["custom"] = custom
+    lead["email"] = lead.get("email", "").lower()
+    return lead
+
+
+def upsert_leads(conn, rows: list[dict], tags: str = "") -> dict:
+    added = updated = 0
+    invalid, suppressed = [], []
+    now = iso(utcnow())
+    for raw in rows:
+        lead = _normalize_lead(raw)
+        email = lead["email"]
+        if not EMAIL_OK.match(email):
+            invalid.append(email or str(raw)[:60])
+            continue
+        if engine.is_suppressed(conn, email):
+            suppressed.append(email)
+        tag_set = {t.strip() for t in (lead.get("tags", "") + "," + tags).split(",") if t.strip()}
+        existing = conn.execute("SELECT * FROM leads WHERE email=?", (email,)).fetchone()
+        if existing:
+            merged_custom = {**json.loads(existing["custom"] or "{}"), **lead["custom"]}
+            merged_tags = {t for t in existing["tags"].split(",") if t} | tag_set
+            sets = {k: lead[k] for k in LEAD_COLUMNS if lead.get(k)}
+            sets.update(custom=json.dumps(merged_custom), tags=",".join(sorted(merged_tags)))
+            if lead.get("notes"):
+                sets["notes"] = lead["notes"]
+            conn.execute(f"UPDATE leads SET {','.join(f'{k}=?' for k in sets)} WHERE id=?",
+                         [*sets.values(), existing["id"]])
+            updated += 1
+        else:
+            conn.execute(
+                "INSERT INTO leads (email, first_name, last_name, company, title, phone, website, city, "
+                "custom, tags, notes, created_at, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (email, *(lead.get(k, "") for k in LEAD_COLUMNS[1:]), json.dumps(lead["custom"]),
+                 ",".join(sorted(tag_set)), lead.get("notes", ""), now,
+                 "unsubscribed" if email in suppressed else "new"))
+            added += 1
+    return {"added": added, "updated": updated, "invalid": invalid[:50], "invalid_count": len(invalid),
+            "already_suppressed": suppressed[:50]}
+
+
+def import_csv(conn, path: str | None = None, csv_text: str | None = None, tags: str = "") -> dict:
+    if path:
+        text = Path(path).expanduser().read_text(encoding="utf-8-sig")
+    elif csv_text:
+        text = csv_text
+    else:
+        raise ValueError("give a path or csv_text")
+    rows = list(csv.DictReader(io.StringIO(text)))
+    return upsert_leads(conn, rows, tags)
+
+
+def list_leads(conn, status: str = "", tag: str = "", search: str = "", campaign: str = "",
+               limit: int = 50, offset: int = 0) -> dict:
+    where, args = [], []
+    if status:
+        where.append("l.status=?"); args.append(status)
+    if tag:
+        where.append("(',' || l.tags || ',') LIKE ?"); args.append(f"%,{tag},%")
+    if search:
+        where.append("(l.email LIKE ? OR l.company LIKE ? OR l.first_name LIKE ? OR l.last_name LIKE ?)")
+        args += [f"%{search}%"] * 4
+    if campaign:
+        c = get_campaign_row(conn, campaign)
+        where.append("l.id IN (SELECT lead_id FROM enrollments WHERE campaign_id=?)"); args.append(c["id"])
+    w = (" WHERE " + " AND ".join(where)) if where else ""
+    total = conn.execute(f"SELECT COUNT(*) FROM leads l{w}", args).fetchone()[0]
+    rows = conn.execute(f"SELECT * FROM leads l{w} ORDER BY l.id DESC LIMIT ? OFFSET ?",
+                        [*args, limit, offset]).fetchall()
+    return {"total": total, "leads": [dict(r) for r in rows]}
+
+
+def update_lead(conn, email: str, status: str | None = None, notes: str | None = None,
+                add_tags: str = "", fields: dict | None = None) -> dict:
+    lead = conn.execute("SELECT * FROM leads WHERE email=?", (email.lower(),)).fetchone()
+    if not lead:
+        raise ValueError(f"no lead {email}")
+    if status:
+        if status not in LEAD_STATUSES:
+            raise ValueError(f"status must be one of {LEAD_STATUSES}")
+        conn.execute("UPDATE leads SET status=? WHERE id=?", (status, lead["id"]))
+        if status in engine.STOP_LEAD_STATUSES:
+            engine.stop_lead(conn, lead["id"], "stopped")
+        if status == "unsubscribed":
+            engine.suppress(conn, lead["email"], "marked unsubscribed")
+    if notes is not None:
+        conn.execute("UPDATE leads SET notes=? WHERE id=?", (notes, lead["id"]))
+    if add_tags or fields:
+        upsert_leads(conn, [{"email": lead["email"], **(fields or {})}], add_tags)
+    return dict(conn.execute("SELECT * FROM leads WHERE id=?", (lead["id"],)).fetchone())
+
+
+# ---------------------------------------------------------------- campaigns
+
+def get_campaign_row(conn, name_or_id) -> sqlite3.Row:
+    row = conn.execute("SELECT * FROM campaigns WHERE name=? OR CAST(id AS TEXT)=?",
+                       (str(name_or_id), str(name_or_id))).fetchone()
+    if not row:
+        raise ValueError(f"no campaign {name_or_id!r}")
+    return row
+
+
+def _mailbox_ids(conn, mailboxes: list[str] | None) -> str:
+    if not mailboxes:
+        return ""
+    ids = []
+    for e in mailboxes:
+        r = conn.execute("SELECT id FROM mailboxes WHERE email=?", (e.lower(),)).fetchone()
+        if not r:
+            raise ValueError(f"no mailbox {e}")
+        ids.append(str(r["id"]))
+    return ",".join(ids)
+
+
+def _validate_schedule(tz: str, days: str, start: str, end: str) -> None:
+    ZoneInfo(tz)
+    if not all(d.strip() in "1234567" and d.strip() for d in days.split(",")):
+        raise ValueError("send_days like '1,2,3,4,5' (1=Mon … 7=Sun)")
+    if datetime.strptime(start, "%H:%M") >= datetime.strptime(end, "%H:%M"):
+        raise ValueError("window_start must be before window_end")
+
+
+def create_campaign(conn, name: str, timezone: str = "America/New_York", send_days: str = "1,2,3,4,5",
+                    window_start: str = "08:30", window_end: str = "16:30", daily_limit: int = 100,
+                    mailboxes: list[str] | None = None, stop_on_reply: bool = True) -> dict:
+    _validate_schedule(timezone, send_days, window_start, window_end)
+    conn.execute("INSERT INTO campaigns (name, timezone, send_days, window_start, window_end, daily_limit, "
+                 "mailbox_ids, stop_on_reply, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                 (name, timezone, send_days, window_start, window_end, daily_limit,
+                  _mailbox_ids(conn, mailboxes), int(stop_on_reply), iso(utcnow())))
+    return campaign_detail(conn, name)
+
+
+def update_campaign(conn, campaign: str, **fields) -> dict:
+    c = get_campaign_row(conn, campaign)
+    fields = {k: v for k, v in fields.items() if v is not None}
+    if "mailboxes" in fields:
+        fields["mailbox_ids"] = _mailbox_ids(conn, fields.pop("mailboxes"))
+    if "stop_on_reply" in fields:
+        fields["stop_on_reply"] = int(fields["stop_on_reply"])
+    allowed = {"name", "timezone", "send_days", "window_start", "window_end", "daily_limit", "mailbox_ids",
+               "stop_on_reply"}
+    bad = set(fields) - allowed
+    if bad:
+        raise ValueError(f"cannot update: {sorted(bad)}")
+    merged = {**dict(c), **fields}
+    _validate_schedule(merged["timezone"], merged["send_days"], merged["window_start"], merged["window_end"])
+    if fields:
+        conn.execute(f"UPDATE campaigns SET {','.join(f'{k}=?' for k in fields)} WHERE id=?",
+                     [*fields.values(), c["id"]])
+    return campaign_detail(conn, c["id"])
+
+
+def set_sequence(conn, campaign: str, steps: list[dict]) -> dict:
+    """Replace a campaign's steps. Each step: {subject, body, delay_days}. Step 1 needs a subject.
+
+    Leave subject empty on follow-ups to send them as replies in the same thread.
+    """
+    c = get_campaign_row(conn, campaign)
+    if not steps:
+        raise ValueError("at least one step required")
+    if not str(steps[0].get("subject", "")).strip():
+        raise ValueError("step 1 needs a subject")
+    sent = conn.execute("SELECT MAX(current_step) FROM enrollments WHERE campaign_id=?", (c["id"],)).fetchone()[0] or 0
+    if sent and len(steps) < sent:
+        raise ValueError(f"leads have already received {sent} steps; keep at least that many")
+    conn.execute("DELETE FROM steps WHERE campaign_id=?", (c["id"],))
+    for i, s in enumerate(steps, 1):
+        if not str(s.get("body", "")).strip():
+            raise ValueError(f"step {i} has an empty body")
+        conn.execute("INSERT INTO steps (campaign_id, step_number, delay_days, subject, body) VALUES (?,?,?,?,?)",
+                     (c["id"], i, float(s.get("delay_days", 0 if i == 1 else 3)), s.get("subject", ""), s["body"]))
+    return campaign_detail(conn, c["id"])
+
+
+def enroll(conn, campaign: str, emails: list[str] | None = None, tag: str = "", status: str = "") -> dict:
+    c = get_campaign_row(conn, campaign)
+    where, args = ["1=1"], []
+    if emails:
+        where.append(f"email IN ({','.join('?' * len(emails))})"); args += [e.lower() for e in emails]
+    if tag:
+        where.append("(',' || tags || ',') LIKE ?"); args.append(f"%,{tag},%")
+    if status:
+        where.append("status=?"); args.append(status)
+    if not (emails or tag or status):
+        raise ValueError("choose leads by emails, tag or status")
+    leads = conn.execute(f"SELECT * FROM leads WHERE {' AND '.join(where)}", args).fetchall()
+    added, skipped = 0, []
+    now = iso(utcnow())
+    for lead in leads:
+        if engine.is_suppressed(conn, lead["email"]) or lead["status"] in engine.STOP_LEAD_STATUSES:
+            skipped.append(f"{lead['email']} ({lead['status']})")
+            continue
+        cur = conn.execute("INSERT OR IGNORE INTO enrollments (campaign_id, lead_id, next_send_at, created_at) "
+                           "VALUES (?,?,?,?)", (c["id"], lead["id"], now, now))
+        if cur.rowcount:
+            added += 1
+        else:
+            skipped.append(f"{lead['email']} (already enrolled)")
+    if added and c["status"] == "completed":
+        conn.execute("UPDATE campaigns SET status='paused' WHERE id=?", (c["id"],))
+    return {"enrolled": added, "skipped": len(skipped), "skipped_examples": skipped[:25]}
+
+
+def unenroll(conn, campaign: str, emails: list[str]) -> dict:
+    c = get_campaign_row(conn, campaign)
+    n = 0
+    for e in emails:
+        n += conn.execute("UPDATE enrollments SET status='stopped' WHERE campaign_id=? AND status='active' AND "
+                          "lead_id=(SELECT id FROM leads WHERE email=?)", (c["id"], e.lower())).rowcount
+    return {"stopped": n}
+
+
+def preview(conn, campaign: str, lead_email: str | None = None, step: int | None = None) -> list[dict]:
+    """Render a campaign's steps for one lead (default: first enrolled lead)."""
+    c = get_campaign_row(conn, campaign)
+    if lead_email:
+        lead = conn.execute("SELECT * FROM leads WHERE email=?", (lead_email.lower(),)).fetchone()
+    else:
+        lead = conn.execute("SELECT l.* FROM leads l JOIN enrollments e ON e.lead_id=l.id WHERE e.campaign_id=? "
+                            "ORDER BY e.id LIMIT 1", (c["id"],)).fetchone()
+    if not lead:
+        raise ValueError("no lead to preview with; pass lead_email or enroll leads first")
+    boxes = engine.campaign_mailboxes(conn, c)
+    if not boxes:
+        raise ValueError("no active mailboxes; add one first")
+    mb = boxes[0]
+    out, thread_subject = [], ""
+    for s in conn.execute("SELECT * FROM steps WHERE campaign_id=? ORDER BY step_number", (c["id"],)):
+        if step and s["step_number"] != step:
+            if s["subject"].strip() and s["step_number"] < step:
+                try:
+                    thread_subject, _ = engine.render_step(conn, c, s, lead, mb)
+                except RenderError:
+                    pass
+            continue
+        try:
+            subj, body = engine.render_step(conn, c, s, lead, mb, thread_subject=thread_subject)
+            if s["subject"].strip():
+                thread_subject = subj
+            out.append({"step": s["step_number"], "delay_days": s["delay_days"], "from": mb["email"],
+                        "to": lead["email"], "subject": subj, "body": body})
+        except RenderError as e:
+            out.append({"step": s["step_number"], "error": str(e)})
+    return out
+
+
+def validate_campaign(conn, campaign: str) -> dict:
+    c = get_campaign_row(conn, campaign)
+    problems, warnings = [], []
+    steps = conn.execute("SELECT * FROM steps WHERE campaign_id=? ORDER BY step_number", (c["id"],)).fetchall()
+    if not steps:
+        problems.append("no sequence steps")
+    if not engine.campaign_mailboxes(conn, c):
+        problems.append("no active mailboxes")
+    if not get_setting(conn, "physical_address").strip():
+        problems.append("physical_address setting is empty (required by CAN-SPAM)")
+    enrolled = conn.execute("SELECT l.* FROM leads l JOIN enrollments e ON e.lead_id=l.id "
+                            "WHERE e.campaign_id=? AND e.status='active'", (c["id"],)).fetchall()
+    if not enrolled:
+        warnings.append("no active enrollments")
+    boxes = engine.campaign_mailboxes(conn, c)
+    bad = []
+    if steps and boxes:
+        for lead in enrolled:
+            for s in steps:
+                try:
+                    engine.render_step(conn, c, s, lead, boxes[0])
+                except RenderError as e:
+                    bad.append(f"{lead['email']} step {s['step_number']}: {e}")
+                    break
+    if bad:
+        warnings.append(f"{len(bad)} lead(s) are missing merge fields and will be skipped (status=error)")
+    capacity = sum(engine.mailbox_effective_limit(m, utcnow()) for m in boxes)
+    return {"ok": not problems, "problems": problems, "warnings": warnings, "render_errors": bad[:25],
+            "enrolled_active": len(enrolled), "mailbox_capacity_today": capacity,
+            "campaign_daily_limit": c["daily_limit"]}
+
+
+def set_status(conn, campaign: str, status: str) -> dict:
+    c = get_campaign_row(conn, campaign)
+    if status == "active":
+        v = validate_campaign(conn, campaign)
+        if not v["ok"]:
+            raise ValueError("cannot start: " + "; ".join(v["problems"]))
+    conn.execute("UPDATE campaigns SET status=? WHERE id=?", (status, c["id"]))
+    return campaign_detail(conn, c["id"])
+
+
+def campaign_stats(conn, cid: int) -> dict:
+    q = lambda sql, *a: conn.execute(sql, (cid, *a)).fetchone()[0]  # noqa: E731
+    enr = {r["status"]: r["n"] for r in conn.execute(
+        "SELECT status, COUNT(*) n FROM enrollments WHERE campaign_id=? GROUP BY status", (cid,))}
+    contacted = q("SELECT COUNT(DISTINCT lead_id) FROM messages WHERE campaign_id=? AND direction='out' "
+                  "AND kind='sequence'")
+    replied = q("SELECT COUNT(DISTINCT lead_id) FROM messages WHERE campaign_id=? AND direction='in' "
+                "AND kind='reply'")
+    bounced = enr.get("bounced", 0)
+    return {
+        "enrolled": sum(enr.values()), "by_status": enr,
+        "emails_sent": q("SELECT COUNT(*) FROM messages WHERE campaign_id=? AND direction='out' AND kind='sequence'"),
+        "leads_contacted": contacted, "leads_replied": replied,
+        "reply_rate": round(replied / contacted, 3) if contacted else 0.0,
+        "bounce_rate": round(bounced / contacted, 3) if contacted else 0.0,
+        "unsubscribed": enr.get("unsubscribed", 0),
+        "per_step_sent": {r["step_number"]: r["n"] for r in conn.execute(
+            "SELECT step_number, COUNT(*) n FROM messages WHERE campaign_id=? AND direction='out' "
+            "AND kind='sequence' GROUP BY step_number", (cid,))},
+    }
+
+
+def campaign_detail(conn, campaign) -> dict:
+    c = get_campaign_row(conn, campaign)
+    d = dict(c)
+    d["steps"] = [dict(s) for s in conn.execute(
+        "SELECT step_number, delay_days, subject, body FROM steps WHERE campaign_id=? ORDER BY step_number",
+        (c["id"],))]
+    d["mailboxes"] = [m["email"] for m in engine.campaign_mailboxes(conn, c)]
+    d["stats"] = campaign_stats(conn, c["id"])
+    return d
+
+
+def overview(conn) -> dict:
+    camps = []
+    for c in conn.execute("SELECT * FROM campaigns ORDER BY id DESC"):
+        s = campaign_stats(conn, c["id"])
+        camps.append({"name": c["name"], "status": c["status"], "enrolled": s["enrolled"],
+                      "sent": s["emails_sent"], "replied": s["leads_replied"], "reply_rate": s["reply_rate"],
+                      "bounce_rate": s["bounce_rate"]})
+    return {
+        "campaigns": camps,
+        "mailboxes": [{k: m[k] for k in ("email", "active", "sent_today", "limit_today")}
+                      for m in list_mailboxes(conn)],
+        "leads_by_status": {r["status"]: r["n"] for r in conn.execute(
+            "SELECT status, COUNT(*) n FROM leads GROUP BY status")},
+        "unhandled_replies": conn.execute(
+            "SELECT COUNT(*) FROM messages WHERE direction='in' AND kind='reply' AND handled=0").fetchone()[0],
+        "physical_address_set": bool(get_setting(conn, "physical_address").strip()),
+    }
+
+
+# ---------------------------------------------------------------- inbox
+
+def list_replies(conn, unhandled_only: bool = True, limit: int = 25) -> list[dict]:
+    q = ("SELECT m.id, m.kind, m.from_addr, m.subject, m.body, m.sent_at, m.handled, l.first_name, l.last_name, "
+         "l.company, l.status AS lead_status, c.name AS campaign FROM messages m "
+         "LEFT JOIN leads l ON l.id=m.lead_id LEFT JOIN campaigns c ON c.id=m.campaign_id "
+         "WHERE m.direction='in' AND m.kind IN ('reply','auto_reply','unsubscribe')")
+    if unhandled_only:
+        q += " AND m.handled=0"
+    return [dict(r) for r in conn.execute(q + " ORDER BY m.id DESC LIMIT ?", (limit,))]
+
+
+def get_thread(conn, lead_email: str) -> dict:
+    lead = conn.execute("SELECT * FROM leads WHERE email=?", (lead_email.lower(),)).fetchone()
+    if not lead:
+        raise ValueError(f"no lead {lead_email}")
+    msgs = [dict(r) for r in conn.execute(
+        "SELECT id, direction, kind, from_addr, to_addr, subject, body, sent_at, step_number FROM messages "
+        "WHERE lead_id=? ORDER BY id", (lead["id"],))]
+    return {"lead": dict(lead), "messages": msgs}
+
+
+def mark_handled(conn, message_ids: list[int]) -> dict:
+    n = 0
+    for i in message_ids:
+        n += conn.execute("UPDATE messages SET handled=1 WHERE id=? AND direction='in'", (i,)).rowcount
+    return {"marked": n}
+
+
+def list_suppression(conn, limit: int = 100) -> list[dict]:
+    return [dict(r) for r in conn.execute("SELECT * FROM suppression ORDER BY created_at DESC LIMIT ?", (limit,))]

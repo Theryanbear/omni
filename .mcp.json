@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "omni-mail": {
+      "command": "python3",
+      "args": ["-m", "omni_mail", "mcp"]
+    }
+  }
+}
