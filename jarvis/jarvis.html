@@ -370,6 +370,11 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
         <div class="grid2">
           <div class="panel"><h2>Jarvis log</h2><ul class="list" id="jlog"></ul></div>
           <div class="panel"><h2>Connections</h2><div id="conns"></div></div>
+          <div class="panel" style="grid-column:1/-1"><h2>Cowork board</h2><p class="note">Leave Cowork a task. It picks up New items on its next run, writes the result here and marks it Done.</p>
+            <form class="form" id="bform"><label class="f" style="grid-column:span 2">Task<input class="inp" name="task" required placeholder="e.g. Research 25 HVAC companies in Lexington and queue them for the engine"></label>
+              <label class="f">Priority<select class="inp" name="priority"><option>Today</option><option>Now</option><option>This week</option></select></label>
+              <label class="f" style="grid-column:1/-1">Details (optional)<input class="inp" name="details"></label><button class="btn am" type="submit">Send to Cowork</button></form>
+            <ul class="list" id="board" style="margin-top:12px"></ul></div>
         </div>
       </section>
 
@@ -422,9 +427,10 @@ const VIEW = {
   accounts: 'view://42342d38-36ae-814b-8cab-000c5b2e48cf', engaged: 'view://42342d38-36ae-8134-819c-000cf7ef5504',
   callq: 'view://42342d38-36ae-81e3-8363-000cc4a19817', cold: 'view://42342d38-36ae-81eb-be70-000c7584a99a',
   jarvis: 'view://42342d38-36ae-8119-9702-000c7c2588a7', calls: 'view://42342d38-36ae-8164-84f4-000ce2abbda1',
-  queue: 'view://42342d38-36ae-818e-9639-000c02a56f83'
+  queue: 'view://42342d38-36ae-818e-9639-000c02a56f83', board: 'view://42342d38-36ae-810d-8583-000caa47fd82',
+  weekly: 'view://42342d38-36ae-81ad-b03b-000c06c05ccd'
 };
-const DSID = { jarvis: '42342d38-36ae-81f5-92b6-000bb09ab79f', calls: '42342d38-36ae-81f8-aa47-000bfb4cb11b', tracker: 'b4e18a0e-4552-4104-99b9-0d53d52549a3' };
+const DSID = { board: '42342d38-36ae-819c-b2e3-000b86b6cec1', jarvis: '42342d38-36ae-81f5-92b6-000bb09ab79f', calls: '42342d38-36ae-81f8-aa47-000bfb4cb11b', tracker: 'b4e18a0e-4552-4104-99b9-0d53d52549a3' };
 const STAGES = [['Proposal Sent', 'PROPOSAL'], ['Meeting Set', 'MEETING'], ['Replied: Interested', 'INTERESTED'], ['Existing (Hot) - manual', 'HOT'], ['Not Now', 'NOT NOW']];
 const STAGE = Object.fromEntries(STAGES);
 const CALL_RANK = { 'Proposal Sent': 0, 'Meeting Set': 1, 'Replied: Interested': 2, 'Existing (Hot) - manual': 3, 'No email: call/visit': 4, 'Existing (Warm) - manual': 5, 'Sent': 6 };
@@ -446,7 +452,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const digits = (p) => String(p || '').replace(/[^\d+]/g, '');
 
-const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], queue: [], agents: [], ok: {}, mail: { state: 'checking' } };
+const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], queue: [], board: [], agents: [], ok: {}, mail: { state: 'checking' } };
 let mcp = null, sample = null, tts = null, dict = null, desktop = null;
 
 /* ---------- clock ---------- */
@@ -888,7 +894,7 @@ function watchView(key, view, every, size = 100) {
   mcp.watchTool('Notion', 'notion-query-data-sources', { data: { mode: 'view', view_url: view, page_size: size } }, (ev) => {
     if (ev.type === 'data') { const p = payload(ev.result); S[key] = (p && p.results) || []; S.ok[key] = true; S.ok[key + 'Err'] = null; }
     else { if (!['server_unavailable', 'upstream_error', 'rate_limited'].includes(ev.error.code)) { S[key] = []; S.ok[key] = false; } S.ok[key + 'Err'] = errCopy(ev.error, 'Notion'); }
-    render(); if (key === 'jarvis') notifyNew(); if (key === 'queue') syncQueue();
+    render(); renderBoard(); if (key === 'jarvis') notifyNew(); if (key === 'queue') syncQueue();
   }, { refetchInterval: every });
 }
 const refreshNotion = () => mcp?.invalidate('Notion', 'notion-query-data-sources').catch(() => {});
@@ -897,7 +903,7 @@ async function boot() {
   [mcp, sample, tts, dict, desktop] = await Promise.all(['mcp', 'sample', 'tts', 'dictation', 'desktop'].map((n) => window.claude.use(n).catch(() => null)));
   if (mcp) {
     watchView('accounts', VIEW.accounts, 300000); watchView('engaged', VIEW.engaged, 300000); watchView('jarvis', VIEW.jarvis, 120000, 60);
-    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000); watchView('queue', VIEW.queue, 300000);
+    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000); watchView('queue', VIEW.queue, 300000); watchView('board', VIEW.board, 120000, 40);
     mcp.watchTool('Claude Code Remote', 'list_sessions', { limit: 8, mine: true }, (ev) => {
       if (ev.type === 'data') { const p = payload(ev.result); S.agents = (p && (p.ccr?.data || p.data || p.sessions)) || []; S.ok.agents = true; setChip('c-agents', 'ok'); }
       else { S.ok.agentsErr = errCopy(ev.error, 'Claude Code Remote'); setChip('c-agents', 'warn'); }
@@ -1050,6 +1056,7 @@ async function mailRefresh() {
   M.busy = true;
   try {
     M.version = (await mailApi('version')).version;
+    if (!M.latest) M.latest = await fetch('engine/manifest.json').then((r) => r.json()).then((j) => j.version).catch(() => null);
     M.overview = await mailApi('overview');
     M.worker = await sh(`"${PY}" -m omni_mail worker-status`, { cwd: HOME + '/omni-mail' }).then((r) => JSON.parse((r.stdout || '{}').trim().split('\n').pop())).catch(() => ({}));
     const camps = M.overview.campaigns;
@@ -1150,7 +1157,7 @@ function renderMail() {
     if (!ov.physical_address_set) row.append(btn('Set footer address', 'am', setFooter));
     row.append(M.worker?.running ? btn('Stop sender', 'rd', () => workerCmd('uninstall-worker')) : btn('Start background sender', 'gn', () => workerCmd('install-worker')));
     if (!M.lane || M.lane.status !== 'active') row.append(btn('Start Cowork lane', 'am', startLane));
-    row.append(btn('Refresh', '', mailRefresh), btn('Update engine', '', installEngine));
+    row.append(btn('Refresh', '', mailRefresh), btn(M.latest && M.latest !== M.version ? `Update engine to v${M.latest}` : 'Reinstall engine', M.latest && M.latest !== M.version ? 'am' : '', installEngine));
     b.append(row, msg(`Cowork lane: ${M.lane ? M.lane.status + ', ' + M.lane.enrolled + ' leads, ' + M.lane.sent + ' sent, ' + M.lane.replied + ' replies' : 'not created yet'}. Queue in Notion: ${S.queue.length} waiting.`), msg(`${sent} sent today of ${cap} capacity across ${ov.mailboxes.length} inbox${ov.mailboxes.length === 1 ? '' : 'es'}. ${ov.unhandled_replies || 0} replies waiting.` + (M.err ? ' Last error: ' + M.err : '')));
     const ib = $('inboxes'); ib.replaceChildren();
     if (!ov.mailboxes.length) ib.append(el('div', 'empty', 'No inboxes yet. Add one below.'));
@@ -1239,6 +1246,41 @@ function renderQuote() {
 $('qform').addEventListener('input', renderQuote); renderQuote();
 $('qdraft').onclick = () => { const q = renderQuote(); ask(`Draft a fleet wash proposal email for me to review (Gmail draft, no recipient unless I name one): ${JSON.stringify(q)}. Lead with the value, then the price per vehicle and monthly total, the 24 hour redo guarantee, no long-term contract. Ask me which company it's for if you don't know.`); };
 
+/* ---------- verified results + Cowork board ---------- */
+function resultCard(title, lines, ok = true) {
+  const c = el('div', 'card'); c.style.borderColor = ok ? 'rgba(93,255,182,.6)' : 'rgba(255,84,104,.6)'; c.style.background = ok ? 'rgba(93,255,182,.06)' : 'rgba(255,84,104,.06)';
+  const b = el('b', null, (ok ? '✓ ' : '✗ ') + title); b.style.color = ok ? 'var(--gn)' : 'var(--rd)'; c.append(b);
+  lines.filter(Boolean).forEach((l) => c.append(el('div', null, l))); logBox.append(c); logBox.scrollTop = logBox.scrollHeight;
+}
+async function postToCowork(task, details = '', priority = 'Today', from = 'Ryan') {
+  const res = await call('Notion', 'notion-create-pages', { parent: { data_source_id: DSID.board }, pages: [{ properties: { Task: String(task).slice(0, 200), Status: 'New', From: from, To: 'Cowork', Priority: ['Now', 'Today', 'This week'].includes(priority) ? priority : 'Today', Details: String(details || '').slice(0, 1800) } }] });
+  const url = res?.pages?.[0]?.url; refreshNotion();
+  resultCard('Sent to Cowork', [String(task).slice(0, 160), url ? 'Saved on the Cowork Board in Notion.' : 'Notion did not return the new row; check the board.'], !!url);
+  return { saved: !!url, url };
+}
+function renderBoard() {
+  const ul = $('board'); if (!ul) return; ul.replaceChildren();
+  if (!S.ok.board) { ul.append(el('li', 'empty', S.ok.boardErr || 'Connecting to Notion…')); return; }
+  if (!S.board.length) { ul.append(el('li', 'empty', 'No tasks yet.')); return; }
+  S.board.slice(0, 12).forEach((r) => { const li = el('li'); li.append(el('i', r.Status === 'Done' ? 'gn' : r.Status === 'Blocked' ? 'rd' : r.Status === 'Doing' ? '' : 'am'));
+    const t = el('div'); t.append(el('span', 't', un(r.Task)), el('span', 's', [r.From && `${r.From} → ${r.To || ''}`, r.Priority, un(r.Result).slice(0, 220)].filter(Boolean).join(' · '))); li.append(t, el('span', 'v', r.Status || '')); ul.append(li); });
+}
+$('bform').addEventListener('submit', async (e) => { e.preventDefault(); const f = new FormData(e.target); if (!mcp) return; try { await postToCowork(f.get('task'), f.get('details'), f.get('priority'), 'Ryan'); e.target.reset(); } catch (err) { resultCard('Not sent', [errCopy(err, 'Notion')], false); } });
+async function sendingMode() { const t = pageText(await call('Notion', 'notion-fetch', { id: PAGES.playbook })); return (t.match(/19b\. Sending mode: (GMAIL|ENGINE)/) || [])[1] || null; }
+async function setSendingMode(mode) {
+  const before = await sendingMode(); if (!before) throw new Error('Could not find "19b. Sending mode" in the Playbook.');
+  if (before === mode) return { before, after: mode, verified: true, note: 'already set' };
+  await call('Notion', 'notion-update-page', { page_id: PAGES.playbook, command: 'update_content', content_updates: [{ old_str: `# 19b. Sending mode: ${before}`, new_str: `# 19b. Sending mode: ${mode}` }] });
+  const after = await sendingMode(); return { before, after, verified: after === mode };
+}
+const URABLE = { paid_jobs: ['paid_job', 'urable_paid_job'], completed_jobs: ['completed_job', 'urable_completed_job'], new_jobs: ['new_job', 'urable_new_job'], updated_jobs: ['updated_job', 'urable_new_or_updated_job'], events: ['updated_event', 'urable_new_or_updated_event'], new_customers: ['getCustomers', 'urable_new_customer'], paid_orders: ['paid_order', 'urable_paid_order'] };
+async function urable(feed) {
+  const [action, tool_name] = URABLE[feed] || URABLE.updated_jobs;
+  const p = await call('Zapier', 'execute_zapier_read_action', { selected_api: 'UrableCLIAPI', action, tool_name, params: {} });
+  const rows = (p && (p.results || p.data)) || (Array.isArray(p) ? p : []);
+  return { feed, count: rows.length, records: rows.slice(0, 25), note: rows.length ? '' : 'Urable returned no records: no recent activity in this feed, or Zapier\'s Urable connection points at an empty account (reconnect it in Zapier if Ryan expects data).' };
+}
+
 /* ---------- shared knowledge: the same Notion pages Cowork reads ---------- */
 const PAGES = { hq: '42342d38-36ae-8184-b954-c9c9318620ad', memory: '42342d38-36ae-812d-8dfb-e1ea34ca9476', playbook: '40a42d38-36ae-819d-83cc-f5ce03ceb12e' };
 const K = { hq: '', memory: '', playbook: '', at: 0 };
@@ -1273,6 +1315,10 @@ Memory: you and Cowork share one memory, the Shared Memory page plus OMNI HQ and
 
 A/B testing: each campaign tests step 1 variants (subject plus opener). The engine retires losers automatically once a winner is confident (30+ sends each, 2+ points, z>=1.65). Your job: explain results with numbers, write new challengers in the winner's spirit, and keep one test running per campaign.
 
+Working style: you are an executive assistant who gets things done, not a narrator. When a tool returns verified:true or a ✓ card appears, the change is done: say so plainly, no hedging. Before stating a number or status, check it (read_notion, mail_engine reads, urable). If something can't be done with your tools, say what you'll do instead: post_to_cowork for research and writing, dispatch_agent for big jobs, upgrade_jarvis to add a missing feature to yourself or the engine. Never stop at "I can't".
+
+Controls you have (Ryan approves each): set_inbox, campaign_control, set_sending_mode, upgrade_jarvis, run_mac_command, dispatch_agent, and mail_engine send_reply or enroll. Urable bookings and jobs come through the urable tool.
+
 A "brief": scoreboard vs $10k and days left, yesterday's dials and today's dial goal, the 3 money moves for today (biggest monthly value first, each with one action), email engine status (sent, replies, A/B verdicts), one specific new money idea, one line of pushback if warranted. Under 140 words.`;
 function snapshot() {
   const m = money(), cs = callStats(), ov = M.overview;
@@ -1289,9 +1335,9 @@ function snapshot() {
 const consoleBox = $('console');
 const conLine = (t, cls) => { consoleBox.append(el('span', cls, t + '\n')); consoleBox.scrollTop = consoleBox.scrollHeight; };
 let envId = null;
-const MAIL_READ = ['ensure_handoff_campaign', 'overview', 'mailboxes', 'campaigns', 'campaign', 'ab_report', 'replies', 'inbox_events', 'outbox', 'thread', 'preview', 'validate', 'list_leads', 'decisions', 'settings', 'tick_preview', 'suppression'];
+const MAIL_READ = ['ensure_handoff_campaign', 'version', 'overview', 'mailboxes', 'campaigns', 'campaign', 'ab_report', 'replies', 'inbox_events', 'outbox', 'thread', 'preview', 'validate', 'list_leads', 'decisions', 'settings', 'tick_preview', 'suppression'];
 const MAIL_WRITE = ['create_campaign', 'update_campaign', 'set_sequence', 'add_variant', 'retire_variant', 'upsert_leads', 'update_lead', 'suppress', 'pause', 'unenroll', 'mark_handled', 'sync'];
-const MAIL_OK = ['start', 'send_reply', 'enroll'];
+const MAIL_OK = ['send_reply', 'enroll'];
 const TOOLS = [
   { name: 'lookup_lead', description: 'Find a lead by company name in the OMNI Outreach Tracker (pipeline and call list) and the cold lead bank. Returns status, contact, email, phone, touches and notes.',
     inputSchema: { type: 'object', properties: { company: { type: 'string' } }, required: ['company'] },
@@ -1319,7 +1365,7 @@ const TOOLS = [
       if (M.state !== 'ready') throw new Error('The mail engine is not set up on this Mac yet (state: ' + M.state + '). Tell Ryan to open the Outreach screen.');
       if (![...MAIL_READ, ...MAIL_WRITE, ...MAIL_OK].includes(op)) throw new Error('Unknown op ' + op);
       if (MAIL_OK.includes(op)) { const ok = await approval(op === 'start' ? 'START CAMPAIGN (emails will send)' : op === 'enroll' ? 'ADD LEADS TO CAMPAIGN' : 'SEND REPLY', JSON.stringify(args, null, 2).slice(0, 2000), op === 'send_reply' ? 'Send it' : 'Approve'); if (!ok) return 'Ryan declined.'; }
-      const r = await mailApi(op, args); if (MAIL_WRITE.includes(op) || MAIL_OK.includes(op)) setTimeout(mailRefresh, 300); return JSON.stringify(r).slice(0, 24000);
+      const r = await mailApi(op, args); if (MAIL_WRITE.includes(op) || MAIL_OK.includes(op)) { resultCard('Engine: ' + op, [JSON.stringify(r).slice(0, 220)], true); setTimeout(mailRefresh, 300); } return JSON.stringify(r).slice(0, 24000);
     } },
   { name: 'remember', description: 'Save a durable fact to the Shared Memory page in Notion, which Cowork also reads: preferences, decisions, people, prices, lessons. One short sentence. Never passwords or account numbers.',
     inputSchema: { type: 'object', properties: { fact: { type: 'string' } }, required: ['fact'] },
@@ -1338,6 +1384,67 @@ const TOOLS = [
       conLine('$ ' + command, 'cmd');
       try { const r = await desktop.childProcess.exec(String(command), { timeout: 60000 }); setChip('c-mac', 'ok'); conLine((r.stdout || '').slice(0, 4000)); if (r.stderr) conLine(r.stderr.slice(0, 1500), 'err'); return { code: r.code, stdout: (r.stdout || '').slice(0, 6000), stderr: (r.stderr || '').slice(0, 1500) }; }
       catch (e) { conLine(String(e.message || e), 'err'); throw new Error(String(e.message || e)); } } },
+  { name: 'set_inbox', description: 'Change one sending inbox: daily_limit (max cold emails a day) and/or active (false pauses it, true resumes). Ryan approves. Returns before and after, read back from the engine.',
+    inputSchema: { type: 'object', properties: { email: { type: 'string' }, daily_limit: { type: 'number' }, active: { type: 'boolean' } }, required: ['email'] },
+    execute: async ({ email, daily_limit, active }) => {
+      if (M.state !== 'ready') throw new Error('Mail engine not set up on this Mac yet.');
+      const find = async () => (await mailApi('mailboxes')).find((m) => m.email === String(email).toLowerCase());
+      const before = await find(); if (!before) throw new Error('No inbox ' + email + '. Inboxes: ' + (M.overview?.mailboxes || []).map((m) => m.email).join(', '));
+      const change = {}; if (daily_limit != null) change.daily_limit = Math.max(1, Math.min(200, Math.round(Number(daily_limit)))); if (active != null) change.active = active ? 1 : 0;
+      if (!Object.keys(change).length) return 'Nothing to change.';
+      if (!(await approval('CHANGE INBOX ' + before.email, JSON.stringify(change), 'Apply'))) return 'Ryan declined.';
+      await mailApi('update_mailbox', { email: before.email, ...change }); const after = await find();
+      const ok = (change.daily_limit == null || after.daily_limit === change.daily_limit) && (change.active == null || after.active === change.active);
+      resultCard('Inbox ' + after.email, [`Daily limit ${before.daily_limit} → ${after.daily_limit}`, `Status ${before.active ? 'active' : 'paused'} → ${after.active ? 'active' : 'paused'}`, `Can send today: ${after.limit_today} (warm up ramp)`], ok); mailRefresh();
+      return { verified: ok, before: { daily_limit: before.daily_limit, active: !!before.active }, after: { daily_limit: after.daily_limit, active: !!after.active, limit_today: after.limit_today } };
+    } },
+  { name: 'campaign_control', description: 'Start (or resume) or pause a mail engine campaign. Ryan approves. Returns the status read back from the engine. The Cowork lane campaign is named "Cowork outreach".',
+    inputSchema: { type: 'object', properties: { campaign: { type: 'string' }, action: { type: 'string', enum: ['start', 'pause'] } }, required: ['campaign', 'action'] },
+    execute: async ({ campaign, action }) => {
+      if (M.state !== 'ready') throw new Error('Mail engine not set up on this Mac yet.');
+      const before = await mailApi('campaign', { campaign: String(campaign) }).catch(() => null); if (!before) throw new Error('No campaign "' + campaign + '". Campaigns: ' + (M.overview?.campaigns || []).map((c) => c.name).join(', '));
+      if (action === 'start') { const v = await mailApi('validate', { campaign: before.name }); if (!v.ok) { resultCard('Cannot start ' + before.name, v.problems, false); return { verified: false, problems: v.problems }; } }
+      if (!(await approval((action === 'start' ? 'START ' : 'PAUSE ') + before.name, action === 'start' ? `Emails begin sending in the next send window. ${before.stats.enrolled} leads enrolled.` : 'No more emails from this campaign until it is started again.', action === 'start' ? 'Start sending' : 'Pause'))) return 'Ryan declined.';
+      await mailApi(action, { campaign: before.name }); const after = await mailApi('campaign', { campaign: before.name });
+      const ok = after.status === (action === 'start' ? 'active' : 'paused');
+      resultCard(before.name, [`Status ${before.status} → ${after.status}`, `${after.stats.enrolled} enrolled · ${after.stats.emails_sent} sent · ${after.stats.leads_replied} replied`], ok); mailRefresh();
+      return { verified: ok, before: before.status, after: after.status };
+    } },
+  { name: 'set_sending_mode', description: 'Flip the Outreach Playbook switch (section 19b) between GMAIL (Cowork sends from Gmail) and ENGINE (Cowork queues written emails, the mail engine sends). Ryan approves. Reads the Playbook back to confirm.',
+    inputSchema: { type: 'object', properties: { mode: { type: 'string', enum: ['GMAIL', 'ENGINE'] } }, required: ['mode'] },
+    execute: async ({ mode }) => {
+      mode = String(mode).toUpperCase(); if (!['GMAIL', 'ENGINE'].includes(mode)) throw new Error('mode must be GMAIL or ENGINE');
+      const warn = mode === 'ENGINE' && (!M.lane || M.lane.status !== 'active') ? '\nWarning: the Cowork lane in the engine is not started, so queued leads would wait. Start it too.' : '';
+      if (!(await approval('PLAYBOOK SENDING MODE → ' + mode, (mode === 'ENGINE' ? 'Cowork stops sending from Gmail and queues every written email for the engine.' : 'Cowork goes back to sending from Gmail.') + warn, 'Flip it'))) return 'Ryan declined.';
+      const r = await setSendingMode(mode); resultCard('Sending mode', [`Playbook 19b: ${r.before} → ${r.after}`, r.verified ? 'Read back from Notion and confirmed.' : 'Notion did not show the change. Check the Playbook.'], r.verified); loadKnowledge(); return r;
+    } },
+  { name: 'post_to_cowork', description: 'Leave Cowork a task on the Cowork Board in Notion (it picks up New items on its next run and writes back the result). Use for research, writing batches, proposals, anything Cowork does better. priority: Now, Today, This week.',
+    inputSchema: { type: 'object', properties: { task: { type: 'string' }, details: { type: 'string' }, priority: { type: 'string' } }, required: ['task'] },
+    execute: async ({ task, details, priority }) => postToCowork(task, details, priority, 'Jarvis') },
+  { name: 'read_board', description: 'Read the Cowork Board: tasks between Ryan, Jarvis and Cowork with status and results.',
+    execute: async () => S.board.slice(0, 30).map((r) => ({ task: un(r.Task), status: r.Status, from: r.From, to: r.To, priority: r.Priority, details: un(r.Details).slice(0, 300), result: un(r.Result).slice(0, 800), updated: r.Updated })) },
+  { name: 'read_notion', description: 'Fact check against Notion. source: one of accounts, engaged, callq, cold, jarvis, calls, queue, board, weekly (live rows), or hq, memory, playbook (page text). Use before claiming a number or status.',
+    inputSchema: { type: 'object', properties: { source: { type: 'string' } }, required: ['source'] },
+    execute: async ({ source }) => {
+      source = String(source); if (PAGES[source]) return pageText(await call('Notion', 'notion-fetch', { id: PAGES[source] })).slice(0, 20000);
+      if (!VIEW[source]) throw new Error('Unknown source. Use: ' + [...Object.keys(VIEW), ...Object.keys(PAGES)].join(', '));
+      const p = await call('Notion', 'notion-query-data-sources', { data: { mode: 'view', view_url: VIEW[source], page_size: 100 } });
+      return JSON.stringify(p.results || []).slice(0, 24000);
+    } },
+  { name: 'urable', description: 'Read Ryan\'s Urable (bookings, jobs, invoices, customers) through Zapier. feed: paid_jobs, completed_jobs, new_jobs, updated_jobs, events (bookings), new_customers, paid_orders. Returns recent records.',
+    inputSchema: { type: 'object', properties: { feed: { type: 'string' } }, required: ['feed'] },
+    execute: async ({ feed }) => urable(String(feed)) },
+  { name: 'upgrade_jarvis', description: 'Improve Jarvis itself or the mail engine: launches a Claude Code agent on Ryan\'s GitHub repo that edits the app or engine, runs the tests, publishes the new version to this same app, and reports back on the Cowork Board. Describe the change precisely. Ryan approves. Takes several minutes; the app updates on reload.',
+    inputSchema: { type: 'object', properties: { change: { type: 'string' } }, required: ['change'] },
+    execute: async ({ change }) => {
+      if (!(await approval('UPGRADE JARVIS', String(change).slice(0, 1500), 'Build it'))) return 'Ryan declined.';
+      if (!envId) { const e = await call('Claude Code Remote', 'list_environments', {}); const envs = e.environments || []; envId = (envs.find((x) => x.state === 'active') || envs[0] || {}).environment_id; }
+      const prompt = `Upgrade request from Ryan through Jarvis:\n\n${change}\n\nHow to do it:\n1. Work on branch claude/email-campaign-automation-onpd1d of this repo (Theryanbear/omni). Jarvis is the single file jarvis/jarvis.html. The mail engine is the Python package omni_mail/ (tests: python3 -m pytest -q). Read CLAUDE.md first.\n2. Make the change. Keep the existing look, data sources, approvals and rules. Never add anything that texts people or sends email without Ryan's approval.\n3. Check: tests pass; node --check on the page script; render the page in headless Chromium and fix anything broken.\n4. If you changed omni_mail/, bump omni_mail/__init__.py __version__ and rewrite jarvis/engine/manifest.json (version plus the sorted list of omni_mail/*.py files).\n5. Commit and push to the branch.\n6. Publish: read the artifact https://claude.ai/artifact/LrfoaHq8EZto961LeDDp5g first, then publish jarvis/jarvis.html to that same url. If the engine changed, include files engine/manifest.json and engine/omni_mail/<file>.py (contentType text/plain) for every engine file.\n7. Report: add a row to the Notion database "Cowork Board" (under OMNI HQ) with Task "Jarvis upgrade: <short name>", From Cowork, To Ryan, Status Done (or Blocked), and Result = what changed, how you verified it, and anything Ryan must do (reload Jarvis; press Update engine on the Outreach screen if the engine changed).`;
+      const p = await call('Claude Code Remote', 'create_session', { environment_id: envId, title: 'Jarvis upgrade: ' + String(change).slice(0, 60), prompt, source_url: 'https://github.com/Theryanbear/omni', source_revision: 'claude/email-campaign-automation-onpd1d' });
+      const id = (JSON.stringify(p).match(/session_[A-Za-z0-9]+/) || [])[0]; mcp.invalidate('Claude Code Remote', 'list_sessions').catch(() => {}); go(5);
+      resultCard('Upgrade agent launched', [id ? 'Follow it: https://claude.ai/code/' + id : 'Started. Watch the Agents screen.', 'It reports back on the Cowork Board when done. Reload Jarvis then.'], !!id);
+      return id ? { session: id, link: 'https://claude.ai/code/' + id } : p;
+    } },
   { name: 'dispatch_agent', description: 'Hand a big multi step job to a Claude agent in the cloud (minutes, with Ryan\'s connectors like Notion, Gmail, Drive). Write the task as a complete standalone brief. Ryan approves first. Good for: researching a batch of leads and writing personalized hooks into Notion, building proposals, market research.',
     inputSchema: { type: 'object', properties: { title: { type: 'string' }, task: { type: 'string' } }, required: ['title', 'task'] },
     execute: async ({ title, task }) => {
@@ -1358,7 +1465,8 @@ async function ask(text) {
   let snap = '{}'; try { snap = snapshot(); } catch (err) { snap = JSON.stringify({ note: 'live data unavailable: ' + (err.message || err) }); }
   const input = [{ role: 'user', content: RULES + '\n\n' + knowledge() + '\n\nLIVE DATA (just now):\n' + snap + '\n\nThe conversation with Ryan follows.' }, ...turns];
   const onText = ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); };
-  const run = (useTools) => sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', tools: useTools && lim?.tools ? TOOLS : undefined, onText });
+  const tier = lim?.modelTiers?.includes('inherit') ? 'inherit' : 'default';
+  const run = (useTools) => sample(input, { cache: false, signal: ctl.signal, modelTier: tier, tools: useTools && lim?.tools ? TOOLS : undefined, onText });
   const done = (reply) => { out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply); };
   try {
     let res;

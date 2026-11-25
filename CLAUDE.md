@@ -1,25 +1,24 @@
-# OMNI Mail: operating notes for Claude
+# OMNI: Jarvis + mail engine
 
-This repo is a self-hosted cold email system. The `omni-mail` MCP server (see `.mcp.json`) gives you tools
-to run campaigns. The `omni-mail run` worker does the actual sending on a schedule.
+Ryan runs OMNI Vehicle Management (fleet washing, Elizabethtown and Louisville KY). This repo holds:
 
-## How to run a campaign
-1. `get_overview` first: check mailboxes, `physical_address_set`, existing campaigns.
-2. Leads: `import_leads_csv` (with a tag) or `add_leads`. Report invalid/suppressed counts back.
-3. `create_campaign` (recipient timezone, weekday window, daily limit) then `set_sequence`.
-   - Step 1 needs a subject. Follow-ups: empty subject to thread as a reply. Typical delays: 0, 3, 4, 7.
-   - Plain text, under ~120 words, one clear ask, no links on step 1, no signature/unsubscribe text (footer adds it).
-   - Use fallbacks on merge fields that may be blank: `{{first_name|there}}`.
-4. `enroll_leads`, then `preview_campaign` for 2 or 3 different leads and **show the user** the previews.
-5. `validate_campaign`, then `start_campaign` only after the user approves the copy.
+- `jarvis/jarvis.html`: the Jarvis desktop app (one file: HTML, CSS, JS). Published as the Claude artifact
+  https://claude.ai/artifact/LrfoaHq8EZto961LeDDp5g. Read that artifact before publishing to it, then publish
+  `jarvis/jarvis.html` to the same url. The mail engine ships beside it as `engine/manifest.json` and
+  `engine/omni_mail/*.py` (contentType text/plain); Jarvis installs or updates the engine on Ryan's Mac from those.
+- `omni_mail/`: the self-hosted cold email engine (Python 3.9+, stdlib only, SQLite). Runs on Ryan's Mac in
+  `~/omni-mail` as a launchd worker. JSON API: `python3 -m omni_mail api` with `{"op": ..., "args": ...}` on stdin.
+- `tests/`: `python3 -m pytest -q`. Keep them green.
 
-## Replies
-`sync_inbox` -> `list_replies` -> `get_thread`. Draft responses and get the user's OK before `send_reply`
-unless they have said to reply on their own. Then `update_lead` with an outcome status
-(interested / meeting / not_interested / won). Never contact leads who are unsubscribed or bounced.
+## Rules for changes
+- Keep Jarvis's look (dark HUD, cyan, Oxanium/Rajdhani), its Notion saved views (never SQL or rows mode: they use
+  the workspace query allowance), and every approval step (inbox, campaign, sending mode, Mac commands, agents).
+- Never add anything that texts people, sends email without Ryan's approval, or stores passwords outside `~/omni-mail/.env`.
+- If you change `omni_mail/`, bump `__version__` in `omni_mail/__init__.py` and rewrite `jarvis/engine/manifest.json`.
+- Check before publishing: tests pass, `node --check` on the page script, render the page in headless Chromium.
+- Notion is the shared brain (OMNI HQ, Shared Memory, Cowork Board, Jarvis Log, Outreach Tracker and Playbook).
+  Report finished upgrades as a Cowork Board row (From Cowork, To Ryan, Status Done, Result = what changed).
 
-## Rules
-- Never put passwords in tool calls; mailboxes reference an env var name in `.env`.
-- Don't raise a mailbox above ~50/day or skip the warm-up ramp without warning the user about deliverability.
-- `run_send_tick` defaults to dry_run; only pass dry_run=false when the user wants to send immediately.
-- Tests: `python3 -m pytest -q`.
+## Cold email rules (OMNI Playbook)
+No dollar figures, no dashes, no links, never "figured", never claim OMNI brings its own water, under 90 words,
+plain lowercase subjects. Footer must keep the postal address and an opt out line.
