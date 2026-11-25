@@ -1130,14 +1130,15 @@ function renderMail() {
   const msg = (t) => el('p', 'note', t);
   if (M.state === 'needs-desktop') b.append(msg('The mail engine runs on your Mac so it can send from all your inboxes. Install Jarvis as a desktop app from the Claude desktop app, then open it.'));
   else if (M.state === 'needs-access') {
-    b.append(msg('The mail engine needs full access on this Mac (to save its files and run the sender). Status: ' + ({ prompt: 'not asked yet', denied: 'turned off', unavailable: 'not offered to this app right now' }[M.fa] || M.fa || 'unknown') + '.'));
+    b.append(msg('Your inboxes, campaigns and history are safe in ~/omni-mail on this Mac, and the background sender keeps running. Jarvis just needs Mac access again to read them (macOS resets it each time Jarvis updates). Status: ' + ({ prompt: 'not allowed yet', denied: 'turned off', unavailable: 'not offered to this app right now' }[M.fa] || M.fa || 'unknown') + '.'));
+    b.append(msg('Fastest fix: press Open permissions panel and switch Full access on. Or use the menu bar at the top of your screen: JARVIS, then Permissions.'), btn('Open permissions panel', 'am', async () => { try { await desktop.permissions.manage(); M.faErr = null; } catch (e) { M.faErr = String(e.message || e) + '. Use the menu bar instead: JARVIS, then Permissions.'; } mailDetect(); }));
     if (M.faErr) b.append(msg('Last attempt: ' + M.faErr));
     if (M.fa === 'denied') {
       b.append(msg('You chose "Don\'t allow" earlier, so macOS won\'t ask again. Open Jarvis\'s permissions and switch Full access on.'), btn('Open Jarvis permissions', 'am', async () => { try { await desktop.permissions.manage(); M.faErr = null; } catch (e) { M.faErr = String(e.message || e) + '. You can also use the Jarvis menu in the menu bar: Jarvis, Permissions.'; } mailDetect(); }));
     } else if (M.fa === 'unavailable') {
       b.append(msg('Claude is not offering full access to this app right now. Usually this means the app is still signing in or just updated: quit Jarvis completely (Cmd+Q), open it again from the Dock, then press Check again. If it stays this way, the Claude desktop app may need an update, or your account does not allow it.'), btn('Check again', '', mailDetect));
     } else {
-      b.append(btn('Grant Mac access', 'am', async () => {
+      b.append(btn('Ask with a popup', '', async () => {
         try { const st = await desktop.permissions.request(['full-access']); M.fa = st['full-access']; M.faErr = M.fa === 'granted' ? null : 'the answer was "' + M.fa + '"'; }
         catch (e) { M.faErr = String(e.message || e).startsWith('ENOTSUP') ? 'the Jarvis window has to be open and in front. Click into it and try again.' : String(e.message || e); }
         mailDetect();
