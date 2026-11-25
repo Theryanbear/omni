@@ -223,6 +223,8 @@ label.f{display:grid;gap:4px;font-size:13px;color:var(--mute)}
 .inrow input:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(63,224,255,.15)}
 .mic{width:44px;height:44px;border-radius:50%;border:1px solid var(--cy);background:var(--cyd);color:var(--cy);cursor:pointer;display:grid;place-items:center;flex:none}
 .mic.on{background:var(--cy);color:var(--bg);box-shadow:0 0 18px var(--cy);animation:pulse 1s infinite}
+.mic.talk{border-color:var(--am);color:var(--am);background:rgba(255,181,71,.1)}.mic.talk.on{background:var(--am);color:var(--bg);box-shadow:0 0 18px var(--am)}
+.mic.locked{outline:2px solid #fff;outline-offset:2px}
 .mic svg{width:20px;height:20px}
 details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;letter-spacing:.12em;margin:4px 0}
 @media(max-width:1180px){.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.grid3>.stack:last-child{grid-column:1/-1}}
@@ -360,6 +362,11 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
             <div id="qout" style="margin-top:14px"></div>
             <div class="quick"><button class="btn am" id="qdraft">Have Jarvis draft a proposal</button></div>
           </div>
+          <div class="panel scroll"><h2>Weekly numbers</h2>
+            <table class="tbl"><thead><tr><th>Week ending</th><th class="n">Recurring</th><th class="n">Cash</th><th class="n">Wins</th></tr></thead><tbody id="weeks"></tbody></table></div>
+          <div class="panel"><h2>Urable</h2><p class="note">Recent jobs and payments from Urable, through your Zapier connection.</p>
+            <div class="quick"><button class="btn" data-urable="paid_jobs">Paid jobs</button><button class="btn" data-urable="completed_jobs">Completed jobs</button><button class="btn" data-urable="events">Bookings</button><button class="btn" data-urable="new_customers">New customers</button></div>
+            <ul class="list" id="urable"><li class="empty">Pick a feed to load it.</li></ul></div>
         </div>
       </section>
 
@@ -411,8 +418,9 @@ details>summary{cursor:pointer;color:var(--cy);font:500 13px Oxanium,sans-serif;
           <button data-ask="Give me one new way to add recurring revenue this month that I'm not doing yet, specific to OMNI, with the first step." title="One specific, untried way to grow recurring revenue">Money idea</button>
         </div>
         <form class="inrow" id="form">
-          <input id="q" autocomplete="off" placeholder="Talk to Jarvis…  (press ` to speak)" aria-label="Message Jarvis">
-          <button type="button" class="mic" id="mic" aria-label="Speak to Jarvis"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+          <input id="q" autocomplete="off" placeholder="Type, or hold Right Shift to talk" aria-label="Message Jarvis">
+          <button type="button" class="mic talk" id="talk" aria-label="Talk to Jarvis" title="Talk to Jarvis: hold Right Shift, double tap Right Shift to lock, or press the mouse back button or scroll wheel"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v11H8l-4 4V4Zm4 5h2v2H8V9Zm4 0h2v2h-2V9Zm4 0h2v2h-2V9Z"/></svg></button>
+          <button type="button" class="mic" id="mic" aria-label="Dictate into the message box" title="Speech to text: fills the box, you send it"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
         </form>
       </div>
     </aside>
@@ -452,7 +460,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const digits = (p) => String(p || '').replace(/[^\d+]/g, '');
 
-const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], queue: [], board: [], agents: [], ok: {}, mail: { state: 'checking' } };
+const S = { accounts: [], engaged: [], callq: [], cold: [], jarvis: [], calls: [], queue: [], board: [], weekly: [], agents: [], ok: {}, mail: { state: 'checking' } };
 let mcp = null, sample = null, tts = null, dict = null, desktop = null;
 
 /* ---------- clock ---------- */
@@ -810,9 +818,16 @@ function render() {
   S.jarvis.filter((r) => r.Status !== 'Needs Ryan').slice(0, 14).forEach((r) => { const li = el('li'); li.append(el('i', r.Type === 'Win' ? 'gn' : r.Type === 'Risk' ? 'rd' : '')); const t = el('div'); t.append(el('span', 't', un(r.Entry)), el('span', 's', [r.Type, un(r.Company), md(pday(r['date:Date:start']))].filter(Boolean).join(' · '))); li.append(t, el('span', 'v', r.Status || '')); jl.append(li); });
   if (!jl.children.length) jl.append(el('li', 'empty', S.ok.jarvis ? 'No log entries yet.' : 'Connecting to Notion…'));
 
-  renderAgents(); renderDial(); renderPlanets(); renderConns();
+  renderAgents(); renderDial(); renderPlanets(); renderConns(); renderWeeks();
   setChip('c-notion', S.ok.accounts && S.ok.engaged && S.ok.jarvis ? 'ok' : (S.ok.accountsErr || S.ok.engagedErr || S.ok.jarvisErr) ? 'bad' : '');
   badge();
+}
+function renderWeeks() {
+  const tb = $('weeks'); if (!tb) return; tb.replaceChildren();
+  if (!S.ok.weekly) { const td = tb.insertRow().insertCell(); td.colSpan = 4; td.className = 'empty'; td.textContent = S.ok.weeklyErr || 'Connecting to Notion…'; return; }
+  if (!S.weekly.length) { const td = tb.insertRow().insertCell(); td.colSpan = 4; td.className = 'empty'; td.textContent = 'First row lands Friday at 5:30 PM. Type Cash collected into it in Notion.'; return; }
+  S.weekly.slice(0, 8).forEach((r) => { const tr = tb.insertRow(); tr.insertCell().textContent = md(pday(r['date:Week ending:start'])) || un(r.Week);
+    [[r['Recurring $'], fmt], [r['Cash collected'], fmt], [r.Wins, String]].forEach(([v, f]) => { const td = tr.insertCell(); td.className = 'n'; td.textContent = v == null ? 'not entered' : f(v); }); });
 }
 function renderAgents() {
   const box = $('agents'); box.replaceChildren();
@@ -866,7 +881,6 @@ addEventListener('keydown', (e) => {
   if (e.target.closest('input,textarea,select')) return;
   if (e.key === 'ArrowRight') go(cur + 1); else if (e.key === 'ArrowLeft') go(cur - 1);
   else if (/^[1-7]$/.test(e.key)) go(Number(e.key) - 1);
-  else if (e.key === '`') { e.preventDefault(); startMic(); }
   else if (cur === 0 && (e.key === '+' || e.key === '=')) zoom(true); else if (cur === 0 && e.key === '-') zoom(false);
 });
 
@@ -903,7 +917,7 @@ async function boot() {
   [mcp, sample, tts, dict, desktop] = await Promise.all(['mcp', 'sample', 'tts', 'dictation', 'desktop'].map((n) => window.claude.use(n).catch(() => null)));
   if (mcp) {
     watchView('accounts', VIEW.accounts, 300000); watchView('engaged', VIEW.engaged, 300000); watchView('jarvis', VIEW.jarvis, 120000, 60);
-    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000); watchView('queue', VIEW.queue, 300000); watchView('board', VIEW.board, 120000, 40);
+    watchView('callq', VIEW.callq, 300000); watchView('cold', VIEW.cold, 600000, 40); watchView('calls', VIEW.calls, 180000); watchView('queue', VIEW.queue, 300000); watchView('board', VIEW.board, 120000, 40); watchView('weekly', VIEW.weekly, 600000, 12);
     mcp.watchTool('Claude Code Remote', 'list_sessions', { limit: 8, mine: true }, (ev) => {
       if (ev.type === 'data') { const p = payload(ev.result); S.agents = (p && (p.ccr?.data || p.data || p.sessions)) || []; S.ok.agents = true; setChip('c-agents', 'ok'); }
       else { S.ok.agentsErr = errCopy(ev.error, 'Claude Code Remote'); setChip('c-agents', 'warn'); }
@@ -911,8 +925,8 @@ async function boot() {
     }, { refetchInterval: 120000 });
   } else { S.ok.accountsErr = S.ok.engagedErr = S.ok.jarvisErr = 'Open Jarvis inside Claude to connect your data.'; S.ok.agentsErr = 'Agents show up once Jarvis runs inside Claude.'; render(); }
   if (!sample) addMsg('sys', 'Jarvis\'s brain needs Claude. Open this page in the Claude app or claude.ai.');
-  if (!dict) $('mic').hidden = true; else wireDict();
-  if (!tts) $('voice').hidden = true;
+  if (dict) wireDict();
+  if (!tts && !desktop?.childProcess) $('voice').hidden = true;
   loadKnowledge(); setInterval(loadKnowledge, 30 * 60000);
   await setupDesktop();
   mailDetect();
@@ -942,7 +956,7 @@ async function setupDesktop() {
 async function powers() {
   const st = await desktop.permissions.state().catch(() => ({}));
   setChip('c-mac', st['full-access'] === 'granted' ? 'ok' : 'warn');
-  if (st.shortcuts === 'granted') desktop.globalShortcut.register('Alt+Shift+J', () => { desktop.window.show(); $('q').focus(); addMsg('sys', 'Summoned. Press ` to talk or type.'); }).catch(() => {});
+  if (st.shortcuts === 'granted') desktop.globalShortcut.register('Alt+Shift+J', () => { desktop.window.show(); $('q').focus(); addMsg('sys', 'Summoned. Hold Right Shift to talk, or type.'); }).catch(() => {});
   if (st['menu-bar'] === 'granted') desktop.tray.set({ icon: drawTray(), toolTip: 'Jarvis · Alt+Shift+J', menu: [
     { label: 'Show Jarvis', click: () => desktop.window.show() }, { label: 'Brief me', click: () => { desktop.window.show(); ask('Brief me.'); } },
     { label: 'Smile and dial', click: () => { desktop.window.show(); go(2); } }, { label: 'Outreach', click: () => { desktop.window.show(); go(3); } }
@@ -988,7 +1002,7 @@ function renderDial() {
     const h = el('h3', null, L.company); const who = el('div', 'who', [L.contact, L.area].filter(Boolean).join(' · '));
     const tags = el('div'); tags.append(el('span', 'tag' + (L.src === 'bank' ? '' : ' am'), L.src === 'bank' ? 'COLD' : (STAGE[L.stage] || L.stage)));
     if (L.last) tags.append(document.createTextNode(' '), el('span', 'tag' + ((ago(L.last) ?? 0) > 7 ? ' rd' : ''), `last touch ${ago(L.last)}d ago`));
-    const ph = el('div', 'phone'); const link = el('a', 'call', '☎ ' + L.phone); link.href = 'tel:' + digits(L.phone); link.onclick = () => startTimer();
+    const ph = el('div', 'phone'); const link = el('a', 'call', '☎ ' + L.phone); link.href = 'tel:' + digits(L.phone); link.onclick = (ev) => { startTimer(); if (desktop?.childProcess) { ev.preventDefault(); desktop.childProcess.exec('open ' + JSON.stringify('tel:' + digits(L.phone))).catch(() => addMsg('sys', 'Could not open the dialer. Call ' + L.phone + ' from your phone.')); } };
     const tm = el('span', 'timer', '0:00'); tm.id = 'timer'; ph.append(link, tm);
     const notes = el('div', 'notes', [L.hook && 'Hook: ' + L.hook, L.notes].filter(Boolean).join('\n\n').slice(0, 1200) || 'No notes yet.');
     const prep = el('button', 'btn', 'Prep me (20 sec brief)'); prep.onclick = () => ask(`Prep me for a cold call to ${L.company} (${L.stage}). Contact: ${L.contact || 'unknown'}. Notes: ${L.notes.slice(0, 600)}. Give me: who they are, the opener line, the likely objection and my answer, and the ask. Under 70 words, spoken style.`);
@@ -1067,6 +1081,7 @@ async function mailRefresh() {
     M.events = ev.concat(M.events || []).slice(0, 30);
     if (ev.length) { store.set('jarvis.mailSince', ev[0].sent_at); reportReplies(ev.filter((x) => x.kind === 'reply')); }
     M.lane = (M.overview.campaigns || []).find((c) => c.name === 'Cowork outreach') || null;
+    store.set('jarvis.lastEngine', { at: new Date().toISOString(), overview: M.overview });
     const dec = await mailApi('decisions', { unreported_only: true, mark_reported: true });
     if (dec.length) reportDecisions(dec);
     M.err = null;
@@ -1124,12 +1139,19 @@ async function startLane() {
   mailRefresh();
 }
 
+function showLastKnown() {
+  const last = store.get('jarvis.lastEngine', null); if (!last || !last.overview) return;
+  const ov = last.overview, ib = $('inboxes'), tb = $('camps'); const when = new Date(last.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  ib.replaceChildren(); ov.mailboxes.forEach((x) => { const d = el('div', 'ibx'); d.append(ring(70, 0, '#6fa3b6', { text: '·', label: x.email }), el('b', null, x.email), el('span', null, 'saved · last seen ' + when)); ib.append(d); });
+  tb.replaceChildren(); ov.campaigns.forEach((c) => { const tr = tb.insertRow(); tr.insertCell().textContent = c.name; tr.insertCell().append(el('span', 'tag', c.status)); [c.sent, c.replied, pct(c.reply_rate)].forEach((v) => { const td = tr.insertCell(); td.className = 'n'; td.textContent = String(v); }); });
+}
 function renderMail() {
   const b = $('eng-body'); b.replaceChildren();
   const btn = (t, cls, fn) => { const x = el('button', 'btn ' + (cls || ''), t); x.onclick = fn; return x; };
   const msg = (t) => el('p', 'note', t);
   if (M.state === 'needs-desktop') b.append(msg('The mail engine runs on your Mac so it can send from all your inboxes. Install Jarvis as a desktop app from the Claude desktop app, then open it.'));
   else if (M.state === 'needs-access') {
+    showLastKnown();
     b.append(msg('Your inboxes, campaigns and history are safe in ~/omni-mail on this Mac, and the background sender keeps running. Jarvis just needs Mac access again to read them (macOS resets it each time Jarvis updates). Status: ' + ({ prompt: 'not allowed yet', denied: 'turned off', unavailable: 'not offered to this app right now' }[M.fa] || M.fa || 'unknown') + '.'));
     b.append(msg('Fastest fix: press Open permissions panel and switch Full access on. Or use the menu bar at the top of your screen: JARVIS, then Permissions.'), btn('Open permissions panel', 'am', async () => { try { await desktop.permissions.manage(); M.faErr = null; } catch (e) { M.faErr = String(e.message || e) + '. Use the menu bar instead: JARVIS, then Permissions.'; } mailDetect(); }));
     if (M.faErr) b.append(msg('Last attempt: ' + M.faErr));
@@ -1245,6 +1267,18 @@ function renderQuote() {
   return q;
 }
 $('qform').addEventListener('input', renderQuote); renderQuote();
+document.querySelectorAll('[data-urable]').forEach((b) => b.addEventListener('click', async () => {
+  const ul = $('urable'); ul.replaceChildren(el('li', 'empty', 'Loading from Urable…'));
+  if (!mcp) { ul.replaceChildren(el('li', 'empty', 'Open Jarvis inside Claude to reach Urable.')); return; }
+  try { const r = await urable(b.dataset.urable); ul.replaceChildren();
+    if (!r.count) { ul.append(el('li', 'empty', r.note)); return; }
+    r.records.slice(0, 12).forEach((x) => { const li = el('li'); li.append(el('i', 'gn')); const t = el('div');
+      const name = x.customer_name || x.customerName || (x.customer && (x.customer.name || [x.customer.firstName, x.customer.lastName].filter(Boolean).join(' '))) || x.name || x.title || x.email || ('#' + (x.id || ''));
+      const when = x.date || x.start || x.startDate || x.createdAt || x.updatedAt || ''; const amt = x.total ?? x.amount ?? x.amountPaid ?? x.price;
+      t.append(el('span', 't', String(name).slice(0, 80)), el('span', 's', [String(when).slice(0, 16), x.status].filter(Boolean).join(' · ')));
+      li.append(t, el('span', 'v', amt != null && !isNaN(Number(amt)) ? fmt(Number(amt)) : '')); ul.append(li); });
+  } catch (e) { ul.replaceChildren(el('li', 'empty', 'Urable did not answer: ' + errCopy(e, 'Zapier'))); }
+}));
 $('qdraft').onclick = () => { const q = renderQuote(); ask(`Draft a fleet wash proposal email for me to review (Gmail draft, no recipient unless I name one): ${JSON.stringify(q)}. Lead with the value, then the price per vehicle and monthly total, the 24 hour redo guarantee, no long-term contract. Ask me which company it's for if you don't know.`); };
 
 /* ---------- verified results + Cowork board ---------- */
@@ -1468,7 +1502,8 @@ async function ask(text) {
   const onText = ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); };
   const tier = lim?.modelTiers?.includes('inherit') ? 'inherit' : 'default';
   const run = (useTools) => sample(input, { cache: false, signal: ctl.signal, modelTier: tier, tools: useTools && lim?.tools ? TOOLS : undefined, onText });
-  const done = (reply) => { out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply); };
+  const force = talkReply; talkReply = false;
+  const done = (reply) => { out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply, force); };
   try {
     let res;
     try { res = await run(true); }
@@ -1490,18 +1525,75 @@ async function ask(text) {
 }
 let voiceOn = store.get('jarvis.voice', true); const vb = $('voice');
 const syncVoice = () => { vb.textContent = voiceOn ? 'Voice on' : 'Voice off'; vb.setAttribute('aria-pressed', String(voiceOn)); };
-syncVoice(); vb.onclick = () => { voiceOn = !voiceOn; store.set('jarvis.voice', voiceOn); syncVoice(); if (!voiceOn) tts?.stop?.(); };
-async function speak(text) { if (!tts || !voiceOn) return; const clean = text.replace(/https?:\S+/g, 'the link').replace(/[*#_`>]/g, '').slice(0, 900); setState('speak', 'SPEAKING'); try { await tts.speak(clean, { voice: 'glassy', rate: 1.05, language: 'en' }); } catch {} finally { setState(null); } }
-
-/* ---------- voice in ---------- */
-let listening = false, finalText = '';
-function startMic() { if (!dict) return; if (listening) { dict.stop().catch(() => {}); return; } finalText = ''; tts?.stop?.(); dict.start().catch((e) => { if (e?.code === 'not_granted') $('mic').hidden = true; }); }
-function wireDict() {
-  dict.onPartial(({ text }) => { $('q').value = (finalText + ' ' + text).trim(); });
-  dict.onFinal(({ text }) => { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; });
-  dict.onState(({ state }) => { listening = state === 'listening'; $('mic').classList.toggle('on', listening); if (listening) setState('listen', 'LISTENING'); else { setState(null); const t = $('q').value.trim(); if (t) { $('q').value = ''; ask(t); } } });
+syncVoice(); vb.onclick = () => { voiceOn = !voiceOn; store.set('jarvis.voice', voiceOn); syncVoice(); if (!voiceOn) stopSpeaking(); };
+let sayProc = null;
+function stopSpeaking() { try { tts?.stop?.(); } catch {} try { sayProc?.kill('SIGTERM'); } catch {} sayProc = null; }
+async function speak(text, force = false) {
+  if (!(voiceOn || force)) return;
+  const clean = text.replace(/https?:\S+/g, 'the link').replace(/[*#_`>]/g, '').slice(0, 900);
+  if (tts) { setState('speak', 'SPEAKING'); try { await tts.speak(clean, { voice: 'glassy', rate: 1.05, language: 'en' }); } catch {} finally { setState(null); } return; }
+  if (desktop?.childProcess) { stopSpeaking(); setState('speak', 'SPEAKING'); await new Promise((res) => { try { sayProc = desktop.childProcess.spawn('/usr/bin/say', ['-v', 'Daniel', '-r', '190', clean]); sayProc.on('exit', res); sayProc.on('error', res); } catch { res(); } }); sayProc = null; setState(null); }
 }
-$('mic').onclick = startMic;
+
+/* ---------- voice in: Talk (Jarvis answers out loud) and Dictate (fills the box) ----------
+   Right Shift: hold to talk, release to send. Double tap to lock listening on; double tap again (or the Talk button) to stop and send.
+   Mouse back button or scroll wheel click: toggle talk. Mic button: dictate. Esc cancels. */
+let listening = false, finalText = '', vmode = null, discard = false, locked = false, warnedVoice = false;
+const voiceBtns = () => { $('talk').classList.toggle('on', listening && vmode === 'talk'); $('mic').classList.toggle('on', listening && vmode === 'dictate'); $('talk').classList.toggle('locked', locked); };
+function voiceUnavailable() {
+  if (warnedVoice) { $('q').focus(); return; } warnedVoice = true; $('q').focus();
+  addMsg('sys', 'Claude\'s voice input isn\'t offered in this window. Two ways to talk anyway: open Jarvis beside a chat in the Claude app (voice works there), or use Mac Dictation right here: click the box and press the Dictation key (or turn on "Press Control twice" in System Settings, Keyboard, Dictation), then press Enter to send.');
+}
+function voiceStart(mode) {
+  if (!dict) { voiceUnavailable(); return false; }
+  if (listening || vmode) return true;
+  vmode = mode; discard = false; finalText = ''; stopSpeaking();
+  dict.start().catch((e) => { vmode = null; locked = false; voiceBtns();
+    if (e?.code === 'not_granted') addMsg('sys', 'Voice input was declined for Jarvis. Allow the microphone for it in the Claude app, then try again.');
+    else if (e?.code !== 'dismissed') addMsg('sys', 'Voice input could not start (' + (e?.code || e?.message || 'error') + ').'); });
+  voiceBtns(); return true;
+}
+function voiceStop(send) { discard = !send; locked = false; if (dict && vmode) dict.stop().catch(() => {}); voiceBtns(); }
+function voiceToggle(mode) { if (vmode) voiceStop(true); else voiceStart(mode); }
+function wireDict() {
+  dict.onPartial(({ text }) => { if (vmode) $('q').value = (finalText + ' ' + text).trim(); });
+  dict.onFinal(({ text }) => { if (vmode) { finalText = (finalText + ' ' + text).trim(); $('q').value = finalText; } });
+  dict.onState(({ state }) => {
+    listening = state === 'listening';
+    if (listening) { setState('listen', vmode === 'talk' ? (locked ? 'LISTENING · LOCKED' : 'LISTENING') : 'DICTATING'); voiceBtns(); return; }
+    const mode = vmode; vmode = null; locked = false; setState(null); voiceBtns();
+    const t = $('q').value.trim();
+    if (discard) { if (mode === 'talk') $('q').value = ''; return; }
+    if (mode === 'talk' && t) { $('q').value = ''; talkReply = true; ask(t); }
+    else if (mode === 'dictate') $('q').focus();
+  });
+}
+let talkReply = false;
+$('mic').onclick = () => voiceToggle('dictate');
+$('talk').onclick = () => voiceToggle('talk');
+// Right Shift: hold to talk, double tap to lock
+let rs = { down: false, at: 0, other: false, lastTap: 0 };
+addEventListener('keydown', (e) => {
+  if (e.code !== 'ShiftRight') { if (rs.down) { rs.other = true; if (vmode === 'talk' && !locked) voiceStop(false); } if (e.key === 'Escape' && vmode) voiceStop(false); return; }
+  if (e.repeat) return;
+  const inp = e.target.closest && e.target.closest('input,textarea,select');
+  if (inp && inp.value && !vmode) return;              // typing a capital letter
+  if (locked) { voiceStop(true); rs.down = false; return; } // double tap while locked: stop and send
+  rs.down = true; rs.at = performance.now(); rs.other = false;
+  if (!vmode) voiceStart('talk');
+}, true);
+addEventListener('keyup', (e) => {
+  if (e.code !== 'ShiftRight' || !rs.down) return;
+  rs.down = false; const now = performance.now(), held = now - rs.at;
+  if (rs.other) return;
+  if (held >= 350) { voiceStop(true); return; }        // push to talk released
+  if (now - rs.lastTap < 500) { locked = true; voiceBtns(); setState('listen', 'LISTENING · LOCKED'); rs.lastTap = 0; return; } // second quick tap: lock
+  rs.lastTap = now; voiceStop(false);                  // first quick tap: wait for a second one
+}, true);
+// Mouse back button (3) or scroll wheel press (1): toggle talk
+addEventListener('mousedown', (e) => { if (e.button === 3 || e.button === 1) { e.preventDefault(); voiceToggle('talk'); } }, true);
+addEventListener('auxclick', (e) => { if (e.button === 3 || e.button === 1) e.preventDefault(); }, true);
+addEventListener('mouseup', (e) => { if (e.button === 3) e.preventDefault(); }, true);
 $('form').addEventListener('submit', (e) => { e.preventDefault(); const t = $('q').value; $('q').value = ''; ask(t); });
 document.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => ask(b.dataset.ask)));
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && busy) ctl?.abort(); });
