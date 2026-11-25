@@ -907,6 +907,7 @@ async function boot() {
   if (!sample) addMsg('sys', 'Jarvis\'s brain needs Claude. Open this page in the Claude app or claude.ai.');
   if (!dict) $('mic').hidden = true; else wireDict();
   if (!tts) $('voice').hidden = true;
+  loadKnowledge(); setInterval(loadKnowledge, 30 * 60000);
   await setupDesktop();
   mailDetect();
 }
@@ -1213,7 +1214,7 @@ $('ibform').addEventListener('submit', async (e) => {
     await mailApi('add_mailbox', args);
     out.textContent = 'Testing login…';
     const t = await mailApi('test_mailbox', { email });
-    out.textContent = `Sending: ${t.smtp}. Reply reading: ${t.imap}.` + (t.smtp !== 'ok' ? ' Check the app password and that 2-Step Verification is on.' : ' Ready. It starts at 10 sends a day and ramps up.');
+    out.textContent = `Sending: ${t.smtp}. Reply reading: ${t.imap}.` + (t.smtp !== 'ok' ? (/AUTHENTICATIONFAILED|Username and Password not accepted|535/i.test(t.smtp + t.imap) ? ' Google rejected the login. Use a 16 letter App Password made while signed in to that same account (2-Step Verification must be on). For an alias, put the main address in Login and use the main account\'s App Password. Also turn on IMAP in that Gmail\'s settings.' : ' Check the app password and that 2-Step Verification is on.') : ' Ready. It starts at 10 sends a day and ramps up.');
     mailRefresh();
   } catch (err) { out.textContent = 'Could not add it: ' + (err.message || err); }
 });
@@ -1238,6 +1239,23 @@ function renderQuote() {
 $('qform').addEventListener('input', renderQuote); renderQuote();
 $('qdraft').onclick = () => { const q = renderQuote(); ask(`Draft a fleet wash proposal email for me to review (Gmail draft, no recipient unless I name one): ${JSON.stringify(q)}. Lead with the value, then the price per vehicle and monthly total, the 24 hour redo guarantee, no long-term contract. Ask me which company it's for if you don't know.`); };
 
+/* ---------- shared knowledge: the same Notion pages Cowork reads ---------- */
+const PAGES = { hq: '42342d38-36ae-8184-b954-c9c9318620ad', memory: '42342d38-36ae-812d-8dfb-e1ea34ca9476', playbook: '40a42d38-36ae-819d-83cc-f5ce03ceb12e' };
+const K = { hq: '', memory: '', playbook: '', at: 0 };
+const pageText = (p) => { const t = String((p && (p.text || p.content)) || ''); const a = t.indexOf('<content>'), b = t.lastIndexOf('</content>'); return un(a >= 0 && b > a ? t.slice(a + 9, b) : t).replace(/<[^>]+>/g, '').replace(/\n{3,}/g, '\n\n').trim(); };
+function playbookCore(t) { const cut = (from, to) => { const a = t.indexOf(from); if (a < 0) return ''; const b = to ? t.indexOf(to, a + 1) : -1; return t.slice(a, b > a ? b : a + 6000); }; return [cut('# 8. What we sell', '# 8b.'), cut('# 9. How we talk about price', '# 12.'), cut('# 17. Handling replies', '# 18.'), cut('# 19b.', '# 20.')].join('\n').slice(0, 14000); }
+async function loadKnowledge() {
+  if (!mcp) return;
+  for (const k of Object.keys(PAGES)) {
+    try { const t = pageText(await call('Notion', 'notion-fetch', { id: PAGES[k] })); K[k] = k === 'playbook' ? playbookCore(t) : t.slice(0, 12000); } catch {}
+  }
+  K.at = Date.now();
+}
+function knowledge() {
+  if (!K.at) return '(Notion pages not loaded yet)';
+  return `OMNI HQ (Jarvis charter):\n${K.hq}\n\nSHARED MEMORY (Cowork's memory plus what Jarvis learned):\n${K.memory}\n\nOUTREACH PLAYBOOK (key rules Cowork follows):\n${K.playbook}`;
+}
+
 /* ---------- Jarvis brain ---------- */
 const RULES = `You are JARVIS, the executive assistant and second brain for Ryan Langseth, who runs OMNI Vehicle Management (Diamond Xpress LLC dba OMNI), a solo fleet washing and detailing business based in Elizabethtown KY and moving into Louisville. Main focus: B2B fleets (trucking, delivery, passenger and premium like country clubs, trades). Goals: $10,000/mo recurring by Dec 31 2026; $4.5k feels stable; $6.5k means hire a commission salesman; $20k/mo in 12 months running without Ryan on the tools.
 
@@ -1250,6 +1268,8 @@ Hard rules: never text anyone, and refuse cold texting (cold marketing texts to 
 Cold calling matters: Ryan's mantra is smile and dial. Push reps, celebrate streaks, keep call prep short.
 
 Tools: lookup_lead (tracker details), search_gmail / read_email_thread / draft_email, log_to_jarvis (record actions, decisions with data, ideas, next steps in Notion), mail_engine (the multi inbox cold email engine on Ryan's Mac: campaigns, sequences, A/B variants, leads, stats, replies), price_quote, call_stats, run_mac_command (Ryan approves each), dispatch_agent (big multi step jobs in the cloud, e.g. research 25 leads and write personalized hooks; Ryan approves).
+
+Memory: you and Cowork share one memory, the Shared Memory page plus OMNI HQ and the Playbook (included below). Treat them as what you already know about Ryan and OMNI. When Ryan tells you something durable (a preference, decision, person, price, lesson), call remember so Cowork learns it too. If something in memory conflicts with live data, trust live data and say so.
 
 A/B testing: each campaign tests step 1 variants (subject plus opener). The engine retires losers automatically once a winner is confident (30+ sends each, 2+ points, z>=1.65). Your job: explain results with numbers, write new challengers in the winner's spirit, and keep one test running per campaign.
 
@@ -1301,6 +1321,9 @@ const TOOLS = [
       if (MAIL_OK.includes(op)) { const ok = await approval(op === 'start' ? 'START CAMPAIGN (emails will send)' : op === 'enroll' ? 'ADD LEADS TO CAMPAIGN' : 'SEND REPLY', JSON.stringify(args, null, 2).slice(0, 2000), op === 'send_reply' ? 'Send it' : 'Approve'); if (!ok) return 'Ryan declined.'; }
       const r = await mailApi(op, args); if (MAIL_WRITE.includes(op) || MAIL_OK.includes(op)) setTimeout(mailRefresh, 300); return JSON.stringify(r).slice(0, 24000);
     } },
+  { name: 'remember', description: 'Save a durable fact to the Shared Memory page in Notion, which Cowork also reads: preferences, decisions, people, prices, lessons. One short sentence. Never passwords or account numbers.',
+    inputSchema: { type: 'object', properties: { fact: { type: 'string' } }, required: ['fact'] },
+    execute: async ({ fact }) => { const line = `- ${isoDay()}: ${String(fact).replace(/\s+/g, ' ').slice(0, 400)}`; await call('Notion', 'notion-update-page', { page_id: PAGES.memory, command: 'insert_content', content: line, position: { type: 'end' } }); K.memory += '\n' + line; addMsg('sys', 'Remembered: ' + String(fact).slice(0, 140)); return 'Saved to Shared Memory.'; } },
   { name: 'price_quote', description: 'Price a fleet wash with OMNI\'s framework. frequency: weekly, biweekly, monthly, bimonthly, quarterly. timing: "", weekend, holiday, sameday. Returns per visit, per vehicle and monthly.',
     inputSchema: { type: 'object', properties: { vehicles: { type: 'number' }, minutes: { type: 'number' }, frequency: { type: 'string' }, rate: { type: 'number' }, miles: { type: 'number' }, timing: { type: 'string' } }, required: ['vehicles'] },
     execute: async (i) => quote(i) },
@@ -1333,7 +1356,7 @@ async function ask(text) {
   const out = addMsg('j', '…'); setState('think', 'PROCESSING'); ctl = new AbortController();
   const lim = await sample.limits().catch(() => null);
   let snap = '{}'; try { snap = snapshot(); } catch (err) { snap = JSON.stringify({ note: 'live data unavailable: ' + (err.message || err) }); }
-  const input = [{ role: 'user', content: RULES + '\n\nLIVE DATA (just now):\n' + snap + '\n\nThe conversation with Ryan follows.' }, ...turns];
+  const input = [{ role: 'user', content: RULES + '\n\n' + knowledge() + '\n\nLIVE DATA (just now):\n' + snap + '\n\nThe conversation with Ryan follows.' }, ...turns];
   const onText = ({ text }) => { out.textContent = text; logBox.scrollTop = logBox.scrollHeight; setState('think', 'RESPONDING'); };
   const run = (useTools) => sample(input, { cache: false, signal: ctl.signal, modelTier: 'default', tools: useTools && lim?.tools ? TOOLS : undefined, onText });
   const done = (reply) => { out.textContent = reply; turns.push({ role: 'assistant', content: reply.slice(0, 4000) }); store.set('jarvis.turns', turns); speak(reply); };
